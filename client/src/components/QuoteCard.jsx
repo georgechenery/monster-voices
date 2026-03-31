@@ -1,0 +1,49 @@
+import { useState, useEffect } from 'react'
+import { getQuoteImage } from '../data/quotes'
+import quoteCardBack from '../assets/quote-card-back.png'
+
+// flipKey changes whenever we want to trigger a new flip (new round or second chance)
+export default function QuoteCard({ quote, flipKey }) {
+  const [isFlipped, setIsFlipped] = useState(false)
+  const [displayedQuote, setDisplayedQuote] = useState(quote)
+
+  useEffect(() => {
+    // New quote arrived — reset to back, then flip to front
+    setIsFlipped(false)
+    const revealTimer = setTimeout(() => {
+      setDisplayedQuote(quote)
+      setIsFlipped(true)
+    }, 1400) // show back for 1.4s, then flip
+    return () => clearTimeout(revealTimer)
+  }, [flipKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const quoteImage = getQuoteImage(displayedQuote)
+
+  return (
+    <div className="quote-card-scene">
+      <div className={`quote-card-3d ${isFlipped ? 'quote-card-revealed' : ''}`}>
+
+        {/* Back: Words of Wisdom */}
+        <div className="quote-card-face quote-card-face-back">
+          <div className="quote-card-physical">
+            <img src={quoteCardBack} alt="Words of Wisdom" className="quote-card-back-img" />
+          </div>
+        </div>
+
+        {/* Front: the quote */}
+        <div className="quote-card-face quote-card-face-front">
+          <div className="quote-card-physical">
+            <div className="quote-card-quote-wrap">
+              <img
+                src={quoteImage}
+                alt={displayedQuote}
+                className="quote-card-quote-img"
+              />
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  )
+}
