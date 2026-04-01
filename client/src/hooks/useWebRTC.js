@@ -13,6 +13,9 @@ function getSupportedMimeType() {
   return types.find(t => MediaRecorder.isTypeSupported(t)) || ''
 }
 
+const WAVEFORM_LEN = 60      // samples kept in history (60 × 100ms = 6 s of waveform)
+const SAMPLE_INTERVAL_MS = 100
+
 export function useWebRTC(socket, isSpeaker, isListener, speakerId) {
   // Speaker refs
   const micStreamRef = useRef(null)
@@ -23,27 +26,45 @@ export function useWebRTC(socket, isSpeaker, isListener, speakerId) {
   const recorderRef = useRef(null)
   const recorderChunksRef = useRef([])
   const mimeTypeRef = useRef('')
+  const waveformBufferRef = useRef([])
+  const lastSampleTimeRef = useRef(0)
 
   // Listener refs
   const listenerPeerRef = useRef(null)
   const currentSpeakerIdRef = useRef(null)
-  const liveAudioRef = useRef(null)   // for live WebRTC stream
-  const replayAudioRef = useRef(null) // for recorded replay
+  const liveAudioRef = useRef(null)
+  const replayAudioRef = useRef(null)
 
   // State
   const [micLevel, setMicLevel] = useState(0)
   const [micActive, setMicActive] = useState(false)
+  const [waveformHistory, setWaveformHistory] = useState([])
   const [audioUnlocked, setAudioUnlocked] = useState(() => localStorage.getItem('audioUnlocked') === 'true')
   const [audioBlocked, setAudioBlocked] = useState(false)
   const [replayUrl, setReplayUrl] = useState(null)
 
-  // ---- AUDIO UNLOCK (call on any user gesture) ----
+  // ---- AUDIO UNLOCK ----
   const unlockAudio = useCallback(() => {
     localStorage.setItem('audioUnlocked', 'true')
     setAudioUnlocked(true)
     setAudioBlocked(false)
     if (liveAudioRef.current && liveAudioRef.current.srcObject) {
       liveAudioRef.current.play().catch(() => {})
+    }
+  }, [])
+
+  // ---- Shared teardown helper (does NOT upload) ----
+  const teardownMic = useCallback((clearWaveform = true) => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
+    audioContextRef.current?.close()
+    audioContextRef.current = null
+    analyserRef.current = null
+    setMicLevel(0)
+    setMicActive(false)
+    if (clearWaveform) {
+      setWaveformHistory([])
+      waveformBufferRef.current = []
+      lastSampleTimeRef.current = 0
     }
   }, [])
 
@@ -56,7 +77,7 @@ export function useWebRTC(socket, isSpeaker, isListener, speakerId) {
       micStreamRef.current = stream
       setMicActive(true)
 
-      // Visualizer
+      // Analyser for waveform + level
       const audioContext = new (window.AudioContext || window.webkitAudioContext)()
       audioContextRef.current = audioContext
       const analyser = audioContext.createAnalyser()
@@ -64,15 +85,29 @@ export function useWebRTC(socket, isSpeaker, isListener, speakerId) {
       analyserRef.current = analyser
       audioContext.createMediaStreamSource(stream).connect(analyser)
       const dataArray = new Uint8Array(analyser.frequencyBinCount)
-      function measure() {
+
+      waveformBufferRef.current = []
+      lastSampleTimeRef.current = 0
+
+      function measure(timestamp) {
         analyser.getByteFrequencyData(dataArray)
         const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length
-        setMicLevel(Math.min(100, Math.round((avg / 128) * 100)))
+        const level = Math.min(100, Math.round((avg / 128) * 100))
+        setMicLevel(level)
+
+        // Push a new waveform sample at fixed interval
+        if (timestamp - lastSampleTimeRef.current >= SAMPLE_INTERVAL_MS) {
+          lastSampleTimeRef.current = timestamp
+          const next = [...waveformBufferRef.current, level / 100].slice(-WAVEFORM_LEN)
+          waveformBufferRef.current = next
+          setWaveformHistory(next)
+        }
+
         animFrameRef.current = requestAnimationFrame(measure)
       }
-      measure()
+      animFrameRef.current = requestAnimationFrame(measure)
 
-      // Start recording immediately
+      // Start recording
       const mimeType = getSupportedMimeType()
       mimeTypeRef.current = mimeType
       recorderChunksRef.current = []
@@ -95,18 +130,64 @@ export function useWebRTC(socket, isSpeaker, isListener, speakerId) {
     }
   }, [socket])
 
-  // ---- SPEAKER: stop mic and upload recording ----
-  const stopMicAndUpload = useCallback(() => {
-    // Stop visualizer
-    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
-    audioContextRef.current?.close()
-    audioContextRef.current = null
-    setMicLevel(0)
-    setMicActive(false)
+  // ---- SPEAKER: stop mic, capture blob for review (does NOT upload) ----
+  // Returns { blob, mimeType } or null
+  const stopForReview = useCallback(() => {
+    teardownMic(false) // keep waveformHistory intact so component can snapshot it
 
     const stream = micStreamRef.current
     micStreamRef.current = null
+    const recorder = recorderRef.current
+    recorderRef.current = null
 
+    return new Promise(resolve => {
+      if (!recorder || recorder.state === 'inactive') {
+        stream?.getTracks().forEach(t => t.stop())
+        resolve(null)
+        return
+      }
+      recorder.onstop = () => {
+        stream?.getTracks().forEach(t => t.stop())
+        const chunks = recorderChunksRef.current
+        recorderChunksRef.current = []
+        if (!chunks.length) { resolve(null); return }
+        const mimeType = mimeTypeRef.current || 'audio/webm'
+        resolve({ blob: new Blob(chunks, { type: mimeType }), mimeType })
+      }
+      recorder.stop()
+    })
+  }, [teardownMic])
+
+  // ---- SPEAKER: upload a previously captured blob ----
+  const uploadBlob = useCallback(({ blob, mimeType }) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      socket.emit('audio_upload', { audioData: reader.result, mimeType })
+    }
+    reader.readAsDataURL(blob)
+  }, [socket])
+
+  // ---- SPEAKER: discard recording without uploading (retry path) ----
+  const stopMicOnly = useCallback(() => {
+    teardownMic(true)
+    const recorder = recorderRef.current
+    recorderRef.current = null
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.ondataavailable = null
+      recorder.onstop = null
+      try { recorder.stop() } catch (e) {}
+    }
+    recorderChunksRef.current = []
+    micStreamRef.current?.getTracks().forEach(t => t.stop())
+    micStreamRef.current = null
+  }, [teardownMic])
+
+  // ---- SPEAKER: stop and upload immediately (legacy / direct submit path) ----
+  const stopMicAndUpload = useCallback(() => {
+    teardownMic(true)
+
+    const stream = micStreamRef.current
+    micStreamRef.current = null
     const recorder = recorderRef.current
     recorderRef.current = null
 
@@ -121,7 +202,6 @@ export function useWebRTC(socket, isSpeaker, isListener, speakerId) {
       if (chunks.length === 0) return
       const mimeType = mimeTypeRef.current || 'audio/webm'
       const blob = new Blob(chunks, { type: mimeType })
-      // Upload via socket as base64
       const reader = new FileReader()
       reader.onload = () => {
         socket.emit('audio_upload', { audioData: reader.result, mimeType })
@@ -129,7 +209,7 @@ export function useWebRTC(socket, isSpeaker, isListener, speakerId) {
       reader.readAsDataURL(blob)
     }
     recorder.stop()
-  }, [socket])
+  }, [socket, teardownMic])
 
   // ---- SPEAKER: handle incoming WebRTC signals from listeners ----
   useEffect(() => {
@@ -160,7 +240,7 @@ export function useWebRTC(socket, isSpeaker, isListener, speakerId) {
     }
   }, [isSpeaker, socket])
 
-  // ---- LISTENER: connect via WebRTC for live audio + receive uploaded recording ----
+  // ---- LISTENER: connect via WebRTC + receive recording ----
   useEffect(() => {
     if (!isListener) return
 
@@ -171,7 +251,6 @@ export function useWebRTC(socket, isSpeaker, isListener, speakerId) {
         try { listenerPeerRef.current.destroy() } catch(e) {}
         listenerPeerRef.current = null
       }
-      // Clear old replay
       setReplayUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
       currentSpeakerIdRef.current = sid
 
@@ -194,11 +273,9 @@ export function useWebRTC(socket, isSpeaker, isListener, speakerId) {
       try { listenerPeerRef.current.signal(signal) } catch(e) {}
     }
 
-    // Receive uploaded recording from server — always works regardless of WebRTC
     function handleAudioReady({ audioData, mimeType }) {
-      const url = audioData // it's a data URL, ready to use directly
+      const url = audioData
       setReplayUrl(url)
-      // Auto-play the recording if live WebRTC didn't come through
       if (replayAudioRef.current) {
         replayAudioRef.current.src = url
         replayAudioRef.current.play().catch(() => {})
@@ -240,7 +317,8 @@ export function useWebRTC(socket, isSpeaker, isListener, speakerId) {
   }, [replayUrl])
 
   return {
-    startMic, stopMicAndUpload, micLevel, micActive,
+    startMic, stopMicAndUpload, stopForReview, stopMicOnly, uploadBlob,
+    micLevel, micActive, waveformHistory,
     liveAudioRef, replayAudioRef,
     audioUnlocked, audioBlocked, unlockAudio,
     replayUrl, handleReplay

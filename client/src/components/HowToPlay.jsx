@@ -1,6 +1,9 @@
 import { useState, useRef } from 'react'
 import { MONSTERS } from '../data/monsters'
 
+// Fixed set of 9 monsters used for How to Play illustrations
+const HTP_MONSTERS = [0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => MONSTERS[i])
+
 const STEPS = [
   {
     key: 'setup',
@@ -33,7 +36,7 @@ const STEPS = [
 function GridIllustration({ highlight }) {
   return (
     <div className="htp-grid-mini">
-      {MONSTERS.map((src, i) => (
+      {HTP_MONSTERS.map((src, i) => (
         <div
           key={i}
           className={[
@@ -54,7 +57,7 @@ function SpeakIllustration({ hint }) {
       <div className="htp-bubble-wrap">
         <div className="htp-speech-bubble">{hint}</div>
       </div>
-      <img src={MONSTERS[3]} className="htp-speaker-monster" alt="" />
+      <img src={HTP_MONSTERS[3]} className="htp-speaker-monster" alt="" />
     </div>
   )
 }
@@ -85,7 +88,7 @@ function FlowIllustration() {
         <div key={i} className="htp-flow-round">
           <div className="htp-flow-round-label">Round {i + 1}</div>
           <div className="htp-flow-spotter-wrap">
-            <img src={MONSTERS[monsterIdx]} className="htp-flow-spotter-img" alt="" />
+            <img src={HTP_MONSTERS[monsterIdx]} className="htp-flow-spotter-img" alt="" />
             <div className="htp-flow-badge">Spotter</div>
           </div>
           {i < spotterIndex.length - 1 && <div className="htp-flow-arrow">→</div>}

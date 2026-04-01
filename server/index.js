@@ -25,12 +25,26 @@ if (process.env.NODE_ENV === 'production') {
 // ---- Game State ----
 const rooms = {}; // roomCode -> roomState
 
-// Only include quotes that have matching card PNG images on the client
-const QUOTES = [
-  "My family is very normal",
-  "Be your own best friend",
-  "Who's going to drink the yogurt water?",
-];
+const QUOTE_COUNT = 112
+
+const MONSTER_COUNT = 308
+
+// Pick 9 distinct monster indices that haven't been used in this game yet.
+// Tracks across rounds so no monster repeats within a full game session.
+function pickMonstersForRound(room) {
+  const available = []
+  for (let i = 0; i < MONSTER_COUNT; i++) {
+    if (!room.usedMonsterIndices.has(i)) available.push(i)
+  }
+  // Safety reset if somehow the pool runs dry (34+ rounds)
+  if (available.length < 9) {
+    room.usedMonsterIndices = new Set()
+    return shuffle(Array.from({ length: MONSTER_COUNT }, (_, i) => i)).slice(0, 9)
+  }
+  const picked = shuffle(available).slice(0, 9)
+  picked.forEach(i => room.usedMonsterIndices.add(i))
+  return picked
+}
 
 // Colors assigned to spotters in gauntlet mode
 const SPOTTER_COLORS = [
@@ -64,9 +78,9 @@ function shuffle(arr) {
 
 function getNextQuote(room) {
   if (!room.quoteDeck || room.quoteDeck.length === 0) {
-    let deck = shuffle([...QUOTES]);
+    let deck = shuffle(Array.from({ length: QUOTE_COUNT }, (_, i) => i));
     // Avoid the same card appearing twice in a row across cycles
-    if (QUOTES.length > 1 && room.lastQuote && deck[0] === room.lastQuote) {
+    if (room.lastQuote != null && deck[0] === room.lastQuote) {
       const swapIdx = 1 + Math.floor(Math.random() * (deck.length - 1));
       [deck[0], deck[swapIdx]] = [deck[swapIdx], deck[0]];
     }
@@ -87,8 +101,8 @@ function startRound(room) {
   const { players, spotterIndex } = room;
   const spotter = players[spotterIndex];
 
-  // Shuffle monsters: position -> monsterIndex
-  const shuffledMonsters = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+  // Pick 9 unique monsters not yet used this game; assign to grid positions
+  const shuffledMonsters = pickMonstersForRound(room);
 
   // Non-spotter players get positions
   const nonSpotters = players.filter(p => p.id !== spotter.id);
@@ -221,7 +235,7 @@ function endRound(room, io) {
 // ---- Gauntlet Mode ----
 
 function startGauntlet(room, pigId) {
-  const shuffledMonsters = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+  const shuffledMonsters = pickMonstersForRound(room);
   const monsterOrder = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8]); // order of positions PIG portrays
 
   const spotters = room.players.filter(p => p.id !== pigId);
@@ -376,6 +390,7 @@ io.on('connection', (socket) => {
       totalRounds: 0,
       round: null,
       gauntlet: null,
+      usedMonsterIndices: new Set(),
     };
 
     socket.join(code);

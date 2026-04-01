@@ -14,24 +14,51 @@ const MIC_ERRORS = {
   error: "Couldn't access microphone. Check no other app is using it, then try again.",
 }
 
+const BAR_COUNT = 50
+const MAX_BAR_H = 48 // px
+
+function buildDisplayBars(history) {
+  const pad = Math.max(0, BAR_COUNT - history.length)
+  return Array(pad).fill(0).concat(history).slice(-BAR_COUNT)
+}
+
 export default function SpeakerView({ roundState, myMonster, guessResult, scores, socket, flippedPositions = [], quoteFlipKey = 0, cardRevealActive = false }) {
   const { quote, phase, shuffledMonsters } = roundState
-  const [stage, setStage] = useState('ready') // 'ready' | 'speaking' | 'done'
+
+  // 'ready' | 'waiting' | 'speaking' | 'review' | 'done'
+  const [stage, setStage] = useState('ready')
   const [micError, setMicError] = useState(null)
-  const [peekRequests, setPeekRequests] = useState([]) // [{ requesterId, requesterName }]
+  const [peekRequests, setPeekRequests] = useState([])
   const [showHelp, setShowHelp] = useState(false)
   const [revealPending, setRevealPending] = useState(false)
   const [showResult, setShowResult] = useState(false)
+  const [capturedBars, setCapturedBars] = useState([])
+  const [showTurnAlert, setShowTurnAlert] = useState(true)
+  const capturedBlobRef = useRef(null)
+  const turnAlertTimerRef = useRef(null)
 
   const quoteRef = useRef(null)
   const monsterRef = useRef(null)
   const micRef = useRef(null)
 
-  // Reset for second chance or new round — same player may speak again
+  const {
+    startMic, stopForReview, stopMicOnly, uploadBlob,
+    micLevel, waveformHistory,
+  } = useWebRTC(socket, true, false, null)
+
+  // Reset for second chance or new round
   useEffect(() => {
+    stopMicOnly()
     setStage('ready')
     setMicError(null)
-  }, [quoteFlipKey])
+    capturedBlobRef.current = null
+    setCapturedBars([])
+    // Show turn alert on first load and on second-chance
+    clearTimeout(turnAlertTimerRef.current)
+    setShowTurnAlert(true)
+    turnAlertTimerRef.current = setTimeout(() => setShowTurnAlert(false), 3000)
+    return () => clearTimeout(turnAlertTimerRef.current)
+  }, [quoteFlipKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!guessResult) {
@@ -54,8 +81,6 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
     }
   }, [guessResult])
 
-  const { startMic, stopMicAndUpload, micLevel, micActive } = useWebRTC(socket, true, false, null)
-
   useEffect(() => {
     function onPeekRequest({ requesterId, requesterName }) {
       setPeekRequests(prev => {
@@ -74,28 +99,56 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
 
   const handleReady = async () => {
     setMicError(null)
+    setStage('waiting') // show "Get Ready..." immediately while mic initialises
     const result = await startMic()
     if (result === true) {
       localStorage.setItem('mic-granted', 'true')
       setStage('speaking')
     } else {
+      setStage('ready')
       setMicError(result)
     }
   }
 
-  const handleDone = () => {
+  const handleStopForReview = async () => {
+    // Snapshot the waveform before teardown
+    const bars = buildDisplayBars(waveformHistory)
+    setCapturedBars(bars)
+    setStage('review')
+    capturedBlobRef.current = await stopForReview()
+  }
+
+  const handleSubmit = () => {
     setStage('done')
-    stopMicAndUpload()
+    if (capturedBlobRef.current) uploadBlob(capturedBlobRef.current)
     socket.emit('done_speaking')
+  }
+
+  const handleRetry = () => {
+    stopMicOnly()
+    capturedBlobRef.current = null
+    setCapturedBars([])
+    setMicError(null)
+    setStage('ready')
   }
 
   const isHttps = window.isSecureContext
   const micGrantedBefore = localStorage.getItem('mic-granted') === 'true'
-  const numBars = 12
-  const bars = Array.from({ length: numBars }, (_, i) => micLevel > (i / numBars) * 100)
+
+  const displayBars = buildDisplayBars(waveformHistory)
 
   return (
     <div className="waiting-layout">
+
+      {/* Your-turn popup — slides in, auto-dismisses, pointer-events none so button stays tappable */}
+      {showTurnAlert && stage === 'ready' && (
+        <div className="turn-popup">
+          <div className="turn-popup-title">Your Turn to Speak!</div>
+          <div className="turn-popup-sub">Read the Words of Wisdom card in your monster's voice</div>
+          <div className="turn-popup-arrow">↓</div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="waiting-header">
         <div className="speaker-instruction-block">
@@ -106,7 +159,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
         <button className="btn-help" onClick={() => setShowHelp(true)}>?</button>
       </div>
 
-      {/* Peek request — full screen overlay, impossible to miss */}
+      {/* Peek request modal */}
       {peekRequests.length > 0 && (
         <div className="peek-modal-backdrop">
           <div className="peek-modal">
@@ -125,7 +178,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
       )}
 
       <div className="waiting-body">
-        {/* Monster grid — fills all available height */}
+        {/* Monster grid */}
         <div className="waiting-grid-col">
           <div className="monster-grid monster-grid-fill">
             {Array.from({ length: 9 }, (_, position) => {
@@ -163,6 +216,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
             })}
           </div>
 
+          {/* Mic controls */}
           <div className="waiting-controls">
             <div className="mic-action-section" ref={micRef}>
               {!isHttps && (
@@ -172,54 +226,95 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
               )}
               {micError && <div className="mic-error">{MIC_ERRORS[micError] || MIC_ERRORS.error}</div>}
 
+              {/* READY */}
+              {stage === 'ready' && (
+                <>
+                  {isHttps && !micError && (
+                    <p className="ready-hint">
+                      {micGrantedBefore
+                        ? 'Ready? Tap to start recording.'
+                        : 'Tap below — your browser will ask for microphone permission.'}
+                    </p>
+                  )}
+                  <button
+                    className={`btn btn-ready${stage === 'ready' ? ' btn-ready-pulse' : ''}`}
+                    onClick={handleReady}
+                    disabled={!isHttps}
+                  >
+                    I'm Ready to Speak
+                  </button>
+                  <div className="connection-status">
+                    {isHttps ? 'Secure connection ✓' : 'Not secure — mic disabled'}
+                  </div>
+                </>
+              )}
+
+              {/* WAITING — mic initialising */}
+              {stage === 'waiting' && (
+                <div className="mic-waiting">
+                  <div className="mic-waiting-dots">
+                    <span /><span /><span />
+                  </div>
+                  <p className="mic-waiting-label">Get Ready...</p>
+                </div>
+              )}
+
+              {/* SPEAKING — scrolling waveform */}
               {stage === 'speaking' && (
-                <div className="mic-visualizer-inline">
-                  <div className="visualizer-bars">
-                    {bars.map((active, i) => (
-                      <div key={i} className={`viz-bar ${active ? 'viz-bar-active' : ''}`}
-                        style={{ height: `${8 + (i % 4) * 6}px` }} />
+                <div className="mic-recording-card">
+                  <div className="mic-recording-header">
+                    <span className="rec-indicator">●</span>
+                    <span className="rec-label">Recording</span>
+                    <span className="rec-level-hint">
+                      {micLevel > 20 ? 'Voice detected' : 'Speak now…'}
+                    </span>
+                  </div>
+                  <div className="mic-waveform">
+                    {displayBars.map((amp, i) => (
+                      <div
+                        key={i}
+                        className="waveform-bar"
+                        style={{ height: `${Math.max(3, Math.round(amp * MAX_BAR_H))}px` }}
+                      />
                     ))}
                   </div>
-                  <div className="mic-level-label">
-                    {micLevel > 20 ? 'Voice detected!' : 'Speak now...'}
+                  <button className="btn btn-stop-rec" onClick={handleStopForReview}>
+                    Stop Recording
+                  </button>
+                </div>
+              )}
+
+              {/* REVIEW — submit or retry */}
+              {stage === 'review' && (
+                <div className="mic-recording-card mic-review-card">
+                  <p className="review-label">Happy with that?</p>
+                  <div className="mic-waveform mic-waveform-static">
+                    {capturedBars.map((amp, i) => (
+                      <div
+                        key={i}
+                        className="waveform-bar"
+                        style={{ height: `${Math.max(3, Math.round(amp * MAX_BAR_H))}px` }}
+                      />
+                    ))}
+                  </div>
+                  <div className="review-actions">
+                    <button className="btn btn-retry-rec" onClick={handleRetry}>↩ Again</button>
+                    <button className="btn btn-submit-rec" onClick={handleSubmit}>Submit ✓</button>
                   </div>
                 </div>
               )}
 
-              {stage === 'ready' && isHttps && !micError && (
-                <p className="ready-hint">
-                  {micGrantedBefore
-                    ? 'Ready? Tap to start recording.'
-                    : 'Tap below — your browser will ask for microphone permission.'}
-                </p>
-              )}
-
-              {stage !== 'done' && (
-                <button
-                  className={`btn ${stage === 'speaking' ? 'btn-done' : 'btn-ready'}`}
-                  onClick={stage === 'speaking' ? handleDone : handleReady}
-                  disabled={!isHttps}
-                >
-                  {stage === 'speaking' ? 'Done Speaking' : "I'm Ready to Speak"}
-                </button>
-              )}
-
-              {stage === 'ready' && (
-                <div className="connection-status">
-                  {isHttps ? 'Secure connection ✓' : 'Not secure — mic disabled'}
+              {/* DONE */}
+              {stage === 'done' && (
+                <div className="done-message">
+                  Uploading your voice… the Monster Spotter is listening!
                 </div>
               )}
             </div>
-
-            {stage === 'done' && (
-              <div className="done-message">
-                Uploading your voice... the Monster Spotter is listening!
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Right column: logo (hides first) + quote + scoreboard */}
+        {/* Right column: logo + quote + scoreboard */}
         <div className="waiting-right-col">
           <div className="game-sidebar-logo-wrap">
             <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />
@@ -235,7 +330,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
           targets={[
             { ref: quoteRef, label: 'Words of Wisdom', desc: 'Read this quote out loud in your monster\'s voice — be dramatic and convincing!' },
             { ref: monsterRef, label: 'Your Monster', desc: 'The card with the gold border is your secret identity. Don\'t give it away!' },
-            { ref: micRef, label: 'Mic Button', desc: 'Tap "I\'m Ready to Speak" to start recording. Tap "Done Speaking" when finished.' },
+            { ref: micRef, label: 'Mic Controls', desc: 'Tap "I\'m Ready to Speak" to start. When done, stop the recording and submit — or record again if you made a mistake.' },
           ]}
           onClose={() => setShowHelp(false)}
         />

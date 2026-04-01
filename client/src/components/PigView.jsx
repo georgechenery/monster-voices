@@ -12,48 +12,92 @@ const MIC_ERRORS = {
   error: "Couldn't access microphone. Check no other app is using it, then try again.",
 }
 
+const BAR_COUNT = 50
+const MAX_BAR_H = 48
+
+function buildDisplayBars(history) {
+  const pad = Math.max(0, BAR_COUNT - history.length)
+  return Array(pad).fill(0).concat(history).slice(-BAR_COUNT)
+}
+
 export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket }) {
   const { shuffledMonsters, quote, phase, solvedPositions, strikes, votes, playerColors, lastResult, monstersLeft } = gauntletState
 
-  const [stage, setStage] = useState('ready') // 'ready' | 'speaking' | 'done'
+  // 'ready' | 'waiting' | 'speaking' | 'review' | 'done'
+  const [stage, setStage] = useState('ready')
   const [micError, setMicError] = useState(null)
+  const [capturedBars, setCapturedBars] = useState([])
+  const [showTurnAlert, setShowTurnAlert] = useState(false)
+  const capturedBlobRef = useRef(null)
+  const turnAlertTimerRef = useRef(null)
 
-  const { startMic, stopMicAndUpload, micLevel, micActive } = useWebRTC(socket, true, false, null)
+  const { startMic, stopForReview, stopMicOnly, uploadBlob, micLevel, waveformHistory } = useWebRTC(socket, true, false, null)
 
-  // Reset mic stage when a new monster / retry arrives
+  // Reset when a new monster or retry arrives
   useEffect(() => {
     if (phase === 'speaking') {
+      stopMicOnly()
       setStage('ready')
       setMicError(null)
+      capturedBlobRef.current = null
+      setCapturedBars([])
+      clearTimeout(turnAlertTimerRef.current)
+      setShowTurnAlert(true)
+      turnAlertTimerRef.current = setTimeout(() => setShowTurnAlert(false), 3000)
     }
-  }, [phase, quoteFlipKey])
+    return () => clearTimeout(turnAlertTimerRef.current)
+  }, [phase, quoteFlipKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleReady = async () => {
     setMicError(null)
+    setStage('waiting')
     const result = await startMic()
     if (result === true) {
       localStorage.setItem('mic-granted', 'true')
       setStage('speaking')
     } else {
+      setStage('ready')
       setMicError(result)
     }
   }
 
-  const handleDone = () => {
+  const handleStopForReview = async () => {
+    const bars = buildDisplayBars(waveformHistory)
+    setCapturedBars(bars)
+    setStage('review')
+    capturedBlobRef.current = await stopForReview()
+  }
+
+  const handleSubmit = () => {
     setStage('done')
-    stopMicAndUpload()
+    if (capturedBlobRef.current) uploadBlob(capturedBlobRef.current)
     socket.emit('done_speaking')
+  }
+
+  const handleRetry = () => {
+    stopMicOnly()
+    capturedBlobRef.current = null
+    setCapturedBars([])
+    setMicError(null)
+    setStage('ready')
   }
 
   const isHttps = window.isSecureContext
   const micGrantedBefore = localStorage.getItem('mic-granted') === 'true'
-  const numBars = 12
-  const bars = Array.from({ length: numBars }, (_, i) => micLevel > (i / numBars) * 100)
-
+  const displayBars = buildDisplayBars(waveformHistory)
   const solvedCount = solvedPositions.length
 
   return (
     <div className="waiting-layout">
+
+      {showTurnAlert && stage === 'ready' && (
+        <div className="turn-popup">
+          <div className="turn-popup-title">Your Turn to Speak!</div>
+          <div className="turn-popup-sub">Read the Words of Wisdom card in your monster's voice</div>
+          <div className="turn-popup-arrow">↓</div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="waiting-header">
         <div className="role-badge role-badge-pig">You are PIG</div>
@@ -116,9 +160,7 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
               {micError && <div className="mic-error">{MIC_ERRORS[micError] || MIC_ERRORS.error}</div>}
 
               {phase === 'voting' && (
-                <div className="done-message">
-                  Spotters are voting... watch the grid!
-                </div>
+                <div className="done-message">Spotters are voting... watch the grid!</div>
               )}
 
               {phase === 'result' && lastResult && (
@@ -129,38 +171,64 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
 
               {phase === 'speaking' && (
                 <>
+                  {/* READY */}
+                  {stage === 'ready' && (
+                    <>
+                      {isHttps && !micError && (
+                        <p className="ready-hint">
+                          {micGrantedBefore ? 'Ready? Tap to start recording.' : 'Tap below — your browser will ask for microphone permission.'}
+                        </p>
+                      )}
+                      <button className={`btn btn-ready${stage === 'ready' ? ' btn-ready-pulse' : ''}`} onClick={handleReady} disabled={!isHttps}>
+                        I'm Ready to Speak
+                      </button>
+                    </>
+                  )}
+
+                  {/* WAITING */}
+                  {stage === 'waiting' && (
+                    <div className="mic-waiting">
+                      <div className="mic-waiting-dots"><span /><span /><span /></div>
+                      <p className="mic-waiting-label">Get Ready...</p>
+                    </div>
+                  )}
+
+                  {/* SPEAKING */}
                   {stage === 'speaking' && (
-                    <div className="mic-visualizer-inline">
-                      <div className="visualizer-bars">
-                        {bars.map((active, i) => (
-                          <div key={i} className={`viz-bar ${active ? 'viz-bar-active' : ''}`}
-                            style={{ height: `${8 + (i % 4) * 6}px` }} />
+                    <div className="mic-recording-card">
+                      <div className="mic-recording-header">
+                        <span className="rec-indicator">●</span>
+                        <span className="rec-label">Recording</span>
+                        <span className="rec-level-hint">{micLevel > 20 ? 'Voice detected' : 'Speak now…'}</span>
+                      </div>
+                      <div className="mic-waveform">
+                        {displayBars.map((amp, i) => (
+                          <div key={i} className="waveform-bar"
+                            style={{ height: `${Math.max(3, Math.round(amp * MAX_BAR_H))}px` }} />
                         ))}
                       </div>
-                      <div className="mic-level-label">
-                        {micLevel > 20 ? 'Voice detected!' : 'Speak now...'}
+                      <button className="btn btn-stop-rec" onClick={handleStopForReview}>Stop Recording</button>
+                    </div>
+                  )}
+
+                  {/* REVIEW */}
+                  {stage === 'review' && (
+                    <div className="mic-recording-card mic-review-card">
+                      <p className="review-label">Happy with that?</p>
+                      <div className="mic-waveform mic-waveform-static">
+                        {capturedBars.map((amp, i) => (
+                          <div key={i} className="waveform-bar"
+                            style={{ height: `${Math.max(3, Math.round(amp * MAX_BAR_H))}px` }} />
+                        ))}
+                      </div>
+                      <div className="review-actions">
+                        <button className="btn btn-retry-rec" onClick={handleRetry}>↩ Again</button>
+                        <button className="btn btn-submit-rec" onClick={handleSubmit}>Submit ✓</button>
                       </div>
                     </div>
                   )}
 
-                  {stage === 'ready' && isHttps && !micError && (
-                    <p className="ready-hint">
-                      {micGrantedBefore
-                        ? 'Ready? Tap to start recording.'
-                        : 'Tap below — your browser will ask for microphone permission.'}
-                    </p>
-                  )}
-
-                  {stage !== 'done' && (
-                    <button
-                      className={`btn ${stage === 'speaking' ? 'btn-done' : 'btn-ready'}`}
-                      onClick={stage === 'speaking' ? handleDone : handleReady}
-                      disabled={!isHttps}
-                    >
-                      {stage === 'speaking' ? 'Done Speaking' : "I'm Ready to Speak"}
-                    </button>
-                  )}
-
+                  {/* DONE */}
                   {stage === 'done' && (
                     <div className="done-message">Uploading... spotters are listening!</div>
                   )}

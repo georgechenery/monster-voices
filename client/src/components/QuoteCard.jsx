@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getQuoteImage } from '../data/quotes'
+import { QUOTES } from '../data/quotes'
 import quoteCardBack from '../assets/quote-card-back.png'
 
 // flipKey changes whenever we want to trigger a new flip (new round or second chance)
@@ -17,7 +17,7 @@ export default function QuoteCard({ quote, flipKey }) {
     return () => clearTimeout(revealTimer)
   }, [flipKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const quoteImage = getQuoteImage(displayedQuote)
+  const quoteImage = QUOTES[displayedQuote]
 
   return (
     <div className="quote-card-scene">
@@ -36,7 +36,7 @@ export default function QuoteCard({ quote, flipKey }) {
             <div className="quote-card-quote-wrap">
               <img
                 src={quoteImage}
-                alt={displayedQuote}
+                alt="Words of Wisdom card"
                 className="quote-card-quote-img"
               />
             </div>

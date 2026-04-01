@@ -172,7 +172,7 @@ export default function GauntletSpotterView({ gauntletState, myPlayer, players, 
               </div>
             )}
 
-            {replayUrl && phase !== 'voting' && (
+            {replayUrl && (
               <button className="btn btn-replay" onClick={handleReplay}>
                 Listen Again
               </button>

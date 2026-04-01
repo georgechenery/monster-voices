@@ -3936,3 +3936,393 @@ body {
   color: #e74c3c;
   font-weight: 700;
 }
+
+/* =====================================================
+   MOBILE LAYOUT — Game view overrides
+   Must come AFTER the B&W redesign block so these
+   media-query rules beat the non-queried overrides.
+   ===================================================== */
+@media (max-width: 768px) {
+
+  /* Stack the two columns vertically */
+  .waiting-body {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 0.4rem;
+  }
+
+  /* Quote + scoreboard: compact horizontal strip at the TOP */
+  .waiting-right-col {
+    order: -1;
+    flex: 0 0 auto;
+    width: 100%;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.5rem;
+    height: 110px;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Quote card fills the 110px strip height; width from aspect-ratio */
+  .quote-card-scene {
+    height: 100%;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  /* Scoreboard takes the remaining strip width */
+  .scoreboard {
+    position: static;
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.4rem 0.5rem;
+  }
+  .scoreboard-title  { font-size: 0.8rem; margin-bottom: 0.2rem; }
+  .scoreboard-list   { gap: 0.12rem; }
+  .scoreboard-item   { padding: 0.15rem 0.35rem; gap: 0.25rem; }
+  .scoreboard-rank   { font-size: 0.7rem; min-width: 14px; }
+  .scoreboard-name   { font-size: 0.7rem; }
+  .scoreboard-score  { font-size: 0.75rem; min-width: 16px; }
+
+  /* Grid column: fills the remaining vertical space */
+  .waiting-grid-col {
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Grid itself: fills available width, capped so it never taller than screen allows */
+  .monster-grid-fill {
+    width: min(100%, calc(100dvh - 15rem));
+    margin: 0 auto;
+  }
+
+  /* Hide logo & label — not needed in compact strip */
+  .game-sidebar-logo-wrap { display: none; }
+  .read-in-voice-label    { display: none; }
+
+  /* Buttons: 44px touch target */
+  .btn {
+    min-height: 44px;
+    font-size: 1rem;
+    padding: 0.55rem 1.1rem;
+  }
+  .btn-done,
+  .btn-ready {
+    font-size: 1.1rem;
+    padding: 0.75rem 1.5rem;
+  }
+  .btn-unlock-audio { font-size: 0.85rem; padding: 6px 14px; }
+  .btn-replay       { font-size: 1rem; padding: 8px 20px; }
+
+  /* Role badge: slightly compact */
+  .role-badge {
+    font-size: 1rem;
+    padding: 0.25rem 0.9rem;
+  }
+
+  /* Status/hint text */
+  .status-active,
+  .status-waiting,
+  .status-speaking,
+  .status-guessing {
+    font-size: 0.95rem;
+    padding: 0.2rem 1rem;
+  }
+  .ready-hint       { font-size: 0.85rem; }
+  .peek-section     { margin: 2px 0; }
+  .btn-peek         { font-size: 0.85rem; padding: 6px 14px; }
+  .done-message     { font-size: 0.85rem; padding: 8px 16px; }
+  .connection-status{ font-size: 0.7rem; }
+  .guess-result-mini{ font-size: 0.82rem; padding: 0.4rem 0.7rem; }
+
+  /* Waiting header: allow wrapping without huge gaps */
+  .waiting-header {
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+}
+
+/* =====================================================
+   MIC RECORDING UI — Waveform + Review
+   ===================================================== */
+
+/* =====================================================
+   YOUR TURN POPUP
+   Fixed overlay, slides in then fades out over 3s.
+   pointer-events: none so the button behind stays tappable.
+   ===================================================== */
+
+.turn-popup {
+  position: fixed;
+  bottom: 120px; /* sits above the button area */
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(300px, calc(100vw - 2.5rem));
+  background: #000;
+  color: #fff;
+  border-radius: 14px;
+  padding: 18px 22px 14px;
+  text-align: center;
+  z-index: 300;
+  pointer-events: none; /* don't block taps on the button below */
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35), 4px 4px 0 rgba(0,0,0,0.4);
+  animation: turnPopupAnim 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.turn-popup-title {
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 1.4rem;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+
+.turn-popup-sub {
+  font-family: 'MonsterBody', sans-serif;
+  font-size: 0.82rem;
+  opacity: 0.8;
+  line-height: 1.4;
+}
+
+.turn-popup-arrow {
+  font-size: 1.6rem;
+  margin-top: 8px;
+  display: block;
+  animation: arrowBounce 0.7s ease-in-out infinite;
+}
+
+@keyframes turnPopupAnim {
+  /* slide up + fade in */
+  0%   { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  12%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  /* hold */
+  75%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  /* fade out */
+  100% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+}
+
+@keyframes arrowBounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(5px); }
+}
+
+/* ---- Pulsing ready button ---- */
+@keyframes readyPulse {
+  0%, 100% {
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.15);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.15), 0 0 0 7px rgba(0,0,0,0.09);
+    transform: scale(1.025);
+  }
+}
+
+.btn-ready-pulse {
+  animation: readyPulse 1.4s ease-in-out infinite;
+}
+
+/* "Get Ready..." waiting state */
+.mic-waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+}
+
+.mic-waiting-label {
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 1.6rem;
+  color: #000;
+  letter-spacing: 0.04em;
+}
+
+.mic-waiting-dots {
+  display: flex;
+  gap: 8px;
+}
+.mic-waiting-dots span {
+  display: block;
+  width: 10px;
+  height: 10px;
+  background: #000;
+  border-radius: 50%;
+  animation: dotBounce 1.1s ease-in-out infinite;
+}
+.mic-waiting-dots span:nth-child(2) { animation-delay: 0.18s; }
+.mic-waiting-dots span:nth-child(3) { animation-delay: 0.36s; }
+@keyframes dotBounce {
+  0%, 80%, 100% { transform: scale(0.55); opacity: 0.35; }
+  40%           { transform: scale(1);    opacity: 1; }
+}
+
+/* Outer card that wraps waveform + button(s) */
+.mic-recording-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 2.5px solid #000;
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.15);
+  width: 100%;
+  max-width: 320px;
+  box-sizing: border-box;
+}
+
+/* Header row: ● REC  /  voice hint */
+.mic-recording-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  width: 100%;
+}
+
+/* Pulsing red dot */
+.rec-indicator {
+  font-size: 1rem;
+  color: #000;
+  line-height: 1;
+  animation: recPulse 0.9s ease-in-out infinite;
+}
+@keyframes recPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.15; }
+}
+
+.rec-label {
+  font-family: 'MonsterBody', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #000;
+}
+
+.rec-level-hint {
+  font-family: 'MonsterBody', sans-serif;
+  font-size: 0.75rem;
+  color: #555;
+  margin-left: auto;
+}
+
+/* Waveform strip */
+.mic-waveform {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  width: 100%;
+  height: 56px;
+  padding: 4px 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-bottom: 1.5px solid #e0e0e0;
+}
+
+/* Each bar */
+.waveform-bar {
+  flex: 1;
+  background: #000;
+  border-radius: 2px;
+  min-height: 3px;
+  max-height: 48px;
+}
+
+/* Static waveform in review: muted grey */
+.mic-waveform-static .waveform-bar {
+  background: #aaa;
+}
+
+/* Stop button during recording */
+.btn-stop-rec {
+  width: 100%;
+  background: #fff;
+  color: #000;
+  border: 2px solid #000;
+  border-radius: 8px;
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 1rem;
+  padding: 10px 16px;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.12);
+  transition: box-shadow 0.12s, transform 0.12s;
+}
+.btn-stop-rec:hover {
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
+  transform: translate(-1px, -1px);
+}
+.btn-stop-rec:active {
+  box-shadow: 1px 1px 0 rgba(0,0,0,0.1);
+  transform: translate(1px, 1px);
+}
+
+/* Review card: slightly different header */
+.mic-review-card {
+  border-style: dashed;
+}
+
+.review-label {
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 1rem;
+  color: #000;
+  align-self: flex-start;
+  margin: 0;
+}
+
+/* Review action buttons */
+.review-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.btn-retry-rec {
+  flex: 1;
+  background: #fff;
+  color: #000;
+  border: 2px solid #000;
+  border-radius: 8px;
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 0.95rem;
+  padding: 10px 8px;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.1);
+  transition: box-shadow 0.12s, transform 0.12s;
+}
+.btn-retry-rec:hover {
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.18);
+  transform: translate(-1px, -1px);
+}
+
+.btn-submit-rec {
+  flex: 2;
+  background: #000;
+  color: #fff;
+  border: 2px solid #000;
+  border-radius: 8px;
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 1rem;
+  padding: 10px 8px;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.25);
+  transition: box-shadow 0.12s, transform 0.12s, background 0.12s;
+}
+.btn-submit-rec:hover {
+  background: #222;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
+  transform: translate(-1px, -1px);
+}
+.btn-submit-rec:active {
+  box-shadow: 1px 1px 0 rgba(0,0,0,0.15);
+  transform: translate(1px, 1px);
+}

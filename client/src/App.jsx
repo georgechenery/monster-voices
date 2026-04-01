@@ -8,6 +8,10 @@ import GameOver from './components/GameOver'
 import { MONSTERS } from './data/monsters'
 import cardBack from './assets/monsters/card-back.png'
 
+function preloadImages(srcs) {
+  srcs.forEach(src => { const img = new Image(); img.src = src })
+}
+
 export default function App() {
   const [view, setView] = useState('lobby') // 'lobby' | 'waiting' | 'game' | 'game_over'
   const [roomCode, setRoomCode] = useState('')
@@ -43,12 +47,9 @@ export default function App() {
   // Gauntlet state
   const [gauntletState, setGauntletState] = useState(null)
 
-  // Preload all card images so the opening animation never flashes white
+  // Preload card-back once on mount (always used)
   useEffect(() => {
-    ;[...MONSTERS, cardBack].forEach(src => {
-      const img = new Image()
-      img.src = src
-    })
+    preloadImages([cardBack])
   }, [])
 
   useEffect(() => {
@@ -102,6 +103,7 @@ export default function App() {
 
     // ---- Classic game events ----
     socket.on('game_started', ({ spotterId, shuffledMonsters, quote, speakingOrder, players: ps }) => {
+      preloadImages(shuffledMonsters.map(i => MONSTERS[i]))
       setGameMode('classic')
       setPlayers(ps)
       setScores(ps.map(p => ({ id: p.id, name: p.name, score: p.score })))
@@ -187,6 +189,7 @@ export default function App() {
 
     // ---- Gauntlet game events ----
     socket.on('gauntlet_started', ({ pigId, shuffledMonsters, quote, playerColors, players: ps, strikes, solvedPositions }) => {
+      preloadImages(shuffledMonsters.map(i => MONSTERS[i]))
       setGameMode('gauntlet')
       setPlayers(ps)
       setMyMonster(null)
