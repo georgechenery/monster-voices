@@ -13,10 +13,13 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
   const [revealPending, setRevealPending] = useState(false)
   const [showResult, setShowResult] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  const [countdown, setCountdown] = useState(null)
 
   const quoteRef = useRef(null)
   const gridRef = useRef(null)
   const statusRef = useRef(null)
+  const spotterTimerRef = useRef(null)
+  const countdownIntervalRef = useRef(null)
 
   const {
     liveAudioRef, replayAudioRef,
@@ -24,10 +27,10 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
     replayUrl, handleReplay
   } = useWebRTC(socket, false, true, currentSpeakerId)
 
-  // Reset clicked position when speaker changes
+  // Reset clicked position when speaker changes or on second chance
   useEffect(() => {
     setClickedPosition(null)
-  }, [currentSpeakerId])
+  }, [currentSpeakerId, quoteFlipKey])
 
   useEffect(() => {
     if (!guessResult) {
@@ -51,6 +54,34 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
       clearTimeout(clearTimer)
     }
   }, [guessResult])
+
+  // Spotter timeout: 30s after waitingForGuess, then 10s countdown, then skip
+  useEffect(() => {
+    if (!waitingForGuess || clickedPosition !== null) {
+      clearTimeout(spotterTimerRef.current)
+      clearInterval(countdownIntervalRef.current)
+      setCountdown(null)
+      return
+    }
+    spotterTimerRef.current = setTimeout(() => {
+      let secs = 10
+      setCountdown(secs)
+      countdownIntervalRef.current = setInterval(() => {
+        secs -= 1
+        if (secs <= 0) {
+          clearInterval(countdownIntervalRef.current)
+          setCountdown(null)
+          socket.emit('skip_guess')
+        } else {
+          setCountdown(secs)
+        }
+      }, 1000)
+    }, 25000)
+    return () => {
+      clearTimeout(spotterTimerRef.current)
+      clearInterval(countdownIntervalRef.current)
+    }
+  }, [waitingForGuess, clickedPosition]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleGuess = (position) => {
     if (!waitingForGuess || clickedPosition !== null) return
@@ -131,6 +162,9 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
                 : <span className="status-waiting">Listening... wait for the speaker to finish</span>
               }
             </div>
+            {countdown !== null && (
+              <div className="timeout-countdown">Time's up in {countdown}s — guess now!</div>
+            )}
             {replayUrl && (
               <button className="btn btn-replay" onClick={handleReplay}>
                 Listen Again

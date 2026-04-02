@@ -425,6 +425,7 @@ body {
 }
 
 .lobby-input-code {
+  font-family: 'MonsterHeadline', sans-serif;
   font-size: 1.8rem;
   text-align: center;
   letter-spacing: 0.3em;
@@ -627,7 +628,7 @@ body {
   height: 100vh;
   padding: 1rem;
   box-sizing: border-box;
-  overflow-y: auto;
+  overflow: hidden;
   background: radial-gradient(ellipse at top, #0d0a1a 0%, var(--bg-deep) 60%);
   position: relative;
 }
@@ -739,6 +740,25 @@ body {
   font-weight: 600;
   color: #fff;
   padding: 0.4rem 0;
+}
+
+/* ===== TIMEOUT COUNTDOWN ===== */
+.timeout-countdown {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ff4444;
+  background: rgba(255, 68, 68, 0.12);
+  border: 2px solid #ff4444;
+  border-radius: 8px;
+  padding: 0.4rem 1rem;
+  margin-top: 0.5rem;
+  animation: countdown-pulse 1s ease-in-out infinite;
+}
+
+@keyframes countdown-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 /* ===== MONSTER GRID ===== */
@@ -2149,7 +2169,8 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  margin: 16px 0;
+  margin: 8px 0;
+  position: relative;
 }
 
 .mic-visualizer-inline {
@@ -2379,6 +2400,7 @@ body {
 
 .quote-card-face-back {
   /* shows first */
+  transform: rotate(180deg);
 }
 
 .quote-card-face-front {
@@ -2936,7 +2958,7 @@ body {
    and the sidebar is fixed-width, so the pair self-sizes and centers automatically. */
 
 .waiting-layout {
-  max-width: none; /* content centers itself; no outer width needed */
+  max-width: 1100px; /* centres the layout with equal margins on wide screens */
 }
 
 .waiting-body {
@@ -2946,19 +2968,27 @@ body {
   gap: 1.5rem;
 }
 
-/* Grid column: size to content (the square grid), don't grow */
+/* Grid column: flex:1 lets the parent determine the size — no circular dependency. */
 .waiting-grid-col {
-  flex: 0 0 auto;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
 }
 
-/* Sidebar: fixed width, don't grow or shrink */
+/* Sidebar: fixed width sits to the right of the grid. */
 .waiting-right-col {
-  flex: 0 0 280px;
+  flex: 0 0 260px;
+  overflow: hidden;
+  justify-content: flex-start;
 }
 
-/* Grid size: driven purely by available height, capped so it never overflows sideways */
+/* Grid: fills all available height in the column (flex:1 minus controls),
+   stays square via aspect-ratio, never wider than the column (max-width). */
 .monster-grid-fill {
-  width: min(calc(100dvh - 15rem), calc(100vw - 280px - 4rem));
+  flex: 1;
+  min-height: 0;
+  width: auto;
+  max-width: 100% !important;
 }
 
 /* ---- Hover quality fix: pan the image instead of scaling anything ----
@@ -3169,7 +3199,7 @@ body {
   letter-spacing: 0.02em;
 }
 
-/* Center the header content, pin help button to far right */
+/* Center header content across full width; ? button sits top-right via absolute */
 .waiting-header {
   justify-content: center;
   position: relative;
@@ -3248,6 +3278,7 @@ body {
   background: #fff;
   border: 2.5px solid #000;
   box-shadow: 4px 4px 0 rgba(0,0,0,0.15);
+  overflow-y: auto;
 }
 
 .scoreboard-title {
@@ -3937,6 +3968,12 @@ body {
   font-weight: 700;
 }
 
+/* Sidebar content: fixed width so items don't stretch across the whole right area.
+   Placed here (after component-level rules) so specificity wins. */
+.waiting-right-col > * {
+  width: min(260px, 100%);
+}
+
 /* =====================================================
    MOBILE LAYOUT — Game view overrides
    Must come AFTER the B&W redesign block so these
@@ -3996,9 +4033,11 @@ body {
     min-height: 0;
   }
 
-  /* Grid itself: fills available width, capped so it never taller than screen allows */
+  /* Grid itself: on mobile use width-based sizing (column layout) */
   .monster-grid-fill {
-    width: min(100%, calc(100dvh - 15rem));
+    flex: none;
+    width: min(100%, calc(100dvh - 18rem));
+    height: auto;
     margin: 0 auto;
   }
 
@@ -4053,78 +4092,110 @@ body {
    ===================================================== */
 
 /* =====================================================
-   YOUR TURN POPUP
-   Fixed overlay, slides in then fades out over 3s.
-   pointer-events: none so the button behind stays tappable.
+   YOUR TURN POPUP — inline, sits directly above the button
    ===================================================== */
 
 .turn-popup {
-  position: fixed;
-  bottom: 120px; /* sits above the button area */
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(300px, calc(100vw - 2.5rem));
   background: #000;
   color: #fff;
-  border-radius: 14px;
-  padding: 18px 22px 14px;
+  border-radius: 12px;
+  padding: 14px 18px 10px;
   text-align: center;
-  z-index: 300;
-  pointer-events: none; /* don't block taps on the button below */
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35), 4px 4px 0 rgba(0,0,0,0.4);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(320px, 90vw);
+  box-sizing: border-box;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.25);
   animation: turnPopupAnim 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+  z-index: 10;
 }
 
 .turn-popup-title {
   font-family: 'MonsterHeadline', sans-serif;
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   letter-spacing: 0.03em;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
 .turn-popup-sub {
   font-family: 'MonsterBody', sans-serif;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   opacity: 0.8;
   line-height: 1.4;
 }
 
 .turn-popup-arrow {
-  font-size: 1.6rem;
-  margin-top: 8px;
+  font-size: 1.5rem;
+  margin-top: 6px;
   display: block;
   animation: arrowBounce 0.7s ease-in-out infinite;
 }
 
 @keyframes turnPopupAnim {
-  /* slide up + fade in */
-  0%   { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-6px); }
   12%  { opacity: 1; transform: translateX(-50%) translateY(0); }
-  /* hold */
   75%  { opacity: 1; transform: translateX(-50%) translateY(0); }
-  /* fade out */
-  100% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-3px); }
 }
 
 @keyframes arrowBounce {
   0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(5px); }
+  50%       { transform: translateY(6px); }
 }
 
-/* ---- Pulsing ready button ---- */
+/* ---- Pulsing ready button — orange ring so it stands out ---- */
 @keyframes readyPulse {
   0%, 100% {
     box-shadow: 3px 3px 0 rgba(0,0,0,0.15);
     transform: scale(1);
+    border-color: #000;
   }
   50% {
-    box-shadow: 3px 3px 0 rgba(0,0,0,0.15), 0 0 0 7px rgba(0,0,0,0.09);
-    transform: scale(1.025);
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.15),
+                0 0 0 5px rgba(249, 115, 22, 0.55),
+                0 0 0 10px rgba(249, 115, 22, 0.18);
+    transform: scale(1.035);
+    border-color: #f97316;
   }
 }
 
 .btn-ready-pulse {
   animation: readyPulse 1.4s ease-in-out infinite;
+}
+
+/* =====================================================
+   TURN-ACTIVE DIMMING
+   When it's the speaker's turn, dim everything except:
+   - their own monster card
+   - the quote card
+   - the ready button
+   ===================================================== */
+
+/* Smooth dim/undim transitions */
+.turn-active .waiting-header,
+.turn-active .monster-card-flipper:not(.monster-card-flipper-mine),
+.turn-active .scoreboard,
+.turn-active .game-sidebar-logo-wrap,
+.turn-active .read-in-voice-label,
+.turn-active .ready-hint,
+.turn-active .connection-status {
+  transition: opacity 0.4s ease;
+}
+
+.turn-active .waiting-header                              { opacity: 0.12; }
+.turn-active .monster-card-flipper:not(.monster-card-flipper-mine) { opacity: 0.1; }
+.turn-active .scoreboard                                  { opacity: 0.1; }
+.turn-active .game-sidebar-logo-wrap                      { opacity: 0; }
+.turn-active .read-in-voice-label                         { opacity: 0; }
+.turn-active .ready-hint                                  { opacity: 0.45; }
+.turn-active .connection-status                           { opacity: 0.3; }
+
+/* Mine card gets a subtle orange glow to confirm "this is you" */
+.turn-active .monster-card-flipper-mine .monster-card-front {
+  box-shadow: 0 0 0 3px #f97316, 3px 3px 0 rgba(0,0,0,0.2) !important;
 }
 
 /* "Get Ready..." waiting state */
@@ -4167,11 +4238,11 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   background: #fff;
   border: 2.5px solid #000;
   border-radius: 14px;
-  padding: 16px 18px;
+  padding: 10px 14px;
   box-shadow: 4px 4px 0 rgba(0,0,0,0.15);
   width: 100%;
   max-width: 320px;
@@ -4222,8 +4293,8 @@ body {
   justify-content: flex-end;
   gap: 2px;
   width: 100%;
-  height: 56px;
-  padding: 4px 0;
+  height: 44px;
+  padding: 2px 0;
   box-sizing: border-box;
   overflow: hidden;
   border-bottom: 1.5px solid #e0e0e0;
@@ -4235,7 +4306,7 @@ body {
   background: #000;
   border-radius: 2px;
   min-height: 3px;
-  max-height: 48px;
+  max-height: 36px;
 }
 
 /* Static waveform in review: muted grey */

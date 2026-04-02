@@ -618,6 +618,21 @@ io.on('connection', (socket) => {
     }, 3000);
   });
 
+  // Spotter timed out — skip the guess and advance
+  socket.on('skip_guess', () => {
+    const code = socket.data.roomCode;
+    const room = rooms[code];
+    if (!room || !room.round) return;
+    const round = room.round;
+    if (socket.id !== round.spotterId) return;
+    if (round.phase !== 'speaking' && round.phase !== 'second_chance') return;
+
+    io.to(code).emit('guess_skipped');
+    setTimeout(() => {
+      advanceSpeaker(room, io);
+    }, 1500);
+  });
+
   // Gauntlet: spotter casts a vote
   socket.on('gauntlet_vote', ({ position }) => {
     const code = socket.data.roomCode;

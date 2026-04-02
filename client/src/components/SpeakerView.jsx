@@ -15,7 +15,7 @@ const MIC_ERRORS = {
 }
 
 const BAR_COUNT = 50
-const MAX_BAR_H = 48 // px
+const MAX_BAR_H = 36 // px
 
 function buildDisplayBars(history) {
   const pad = Math.max(0, BAR_COUNT - history.length)
@@ -34,15 +34,19 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
   const [showResult, setShowResult] = useState(false)
   const [capturedBars, setCapturedBars] = useState([])
   const [showTurnAlert, setShowTurnAlert] = useState(true)
+  const [countdown, setCountdown] = useState(null)
   const capturedBlobRef = useRef(null)
   const turnAlertTimerRef = useRef(null)
+  const speakerTimerRef = useRef(null)
+  const countdownIntervalRef = useRef(null)
+  const stageRef = useRef(stage)
 
   const quoteRef = useRef(null)
   const monsterRef = useRef(null)
   const micRef = useRef(null)
 
   const {
-    startMic, stopForReview, stopMicOnly, uploadBlob,
+    startMic, stopForReview, stopMicOnly, uploadBlob, stopMicAndUpload,
     micLevel, waveformHistory,
   } = useWebRTC(socket, true, false, null)
 
@@ -132,22 +136,61 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
     setStage('ready')
   }
 
+  // Keep stageRef current so timer callbacks can read latest stage
+  useEffect(() => { stageRef.current = stage }, [stage])
+
+  // Cancel turn timer when player self-submits
+  useEffect(() => {
+    if (stage === 'review' || stage === 'done') {
+      clearTimeout(speakerTimerRef.current)
+      clearInterval(countdownIntervalRef.current)
+      setCountdown(null)
+    }
+  }, [stage])
+
+  // Speaker timeout: starts from beginning of turn, 25s then 10s countdown
+  useEffect(() => {
+    clearTimeout(speakerTimerRef.current)
+    clearInterval(countdownIntervalRef.current)
+    setCountdown(null)
+    speakerTimerRef.current = setTimeout(() => {
+      let secs = 10
+      setCountdown(secs)
+      countdownIntervalRef.current = setInterval(() => {
+        secs -= 1
+        if (secs <= 0) {
+          clearInterval(countdownIntervalRef.current)
+          setCountdown(null)
+          const currentStage = stageRef.current
+          if (currentStage === 'speaking') {
+            stopMicAndUpload()
+          } else if (currentStage === 'waiting') {
+            stopMicOnly()
+          }
+          if (currentStage !== 'review' && currentStage !== 'done') {
+            socket.emit('done_speaking')
+            setStage('done')
+          }
+        } else {
+          setCountdown(secs)
+        }
+      }, 1000)
+    }, 25000)
+    return () => {
+      clearTimeout(speakerTimerRef.current)
+      clearInterval(countdownIntervalRef.current)
+    }
+  }, [quoteFlipKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const isHttps = window.isSecureContext
   const micGrantedBefore = localStorage.getItem('mic-granted') === 'true'
 
   const displayBars = buildDisplayBars(waveformHistory)
 
-  return (
-    <div className="waiting-layout">
+  const alertActive = showTurnAlert && stage === 'ready'
 
-      {/* Your-turn popup — slides in, auto-dismisses, pointer-events none so button stays tappable */}
-      {showTurnAlert && stage === 'ready' && (
-        <div className="turn-popup">
-          <div className="turn-popup-title">Your Turn to Speak!</div>
-          <div className="turn-popup-sub">Read the Words of Wisdom card in your monster's voice</div>
-          <div className="turn-popup-arrow">↓</div>
-        </div>
-      )}
+  return (
+    <div className={`waiting-layout${alertActive ? ' turn-active' : ''}`}>
 
       {/* Header */}
       <div className="waiting-header">
@@ -191,7 +234,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
               const showCorrect = showResult && guessResult && guessResult.position === position && (guessResult.correct || isSecondChance)
               const showWrong = showResult && guessResult && guessResult.guessedPosition === position && !guessResult.correct
               return (
-                <div key={position} className="monster-card-flipper" ref={isMine ? monsterRef : null}>
+                <div key={position} className={`monster-card-flipper${isMine ? ' monster-card-flipper-mine' : ''}`} ref={isMine ? monsterRef : null}>
                   <div
                     className={`monster-card-inner ${isFlipped ? 'is-flipped' : ''} ${showReveal ? 'card-reveal-anim' : ''}`}
                     style={showReveal ? { animationDelay: `${position * 225}ms` } : {}}
@@ -229,6 +272,14 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
               {/* READY */}
               {stage === 'ready' && (
                 <>
+                  {/* Inline turn alert — sits directly above the button so ↓ always points at it */}
+                  {alertActive && (
+                    <div className="turn-popup">
+                      <div className="turn-popup-title">Your Turn to Speak!</div>
+                      <div className="turn-popup-sub">Read the Words of Wisdom card in your monster's voice</div>
+                      <div className="turn-popup-arrow">↓</div>
+                    </div>
+                  )}
                   {isHttps && !micError && (
                     <p className="ready-hint">
                       {micGrantedBefore
@@ -237,7 +288,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
                     </p>
                   )}
                   <button
-                    className={`btn btn-ready${stage === 'ready' ? ' btn-ready-pulse' : ''}`}
+                    className="btn btn-ready btn-ready-pulse"
                     onClick={handleReady}
                     disabled={!isHttps}
                   >
@@ -309,6 +360,10 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
                 <div className="done-message">
                   Uploading your voice… the Monster Spotter is listening!
                 </div>
+              )}
+
+              {countdown !== null && (
+                <div className="timeout-countdown">Auto-submitting in {countdown}s</div>
               )}
             </div>
           </div>

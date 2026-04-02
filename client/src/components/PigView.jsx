@@ -13,7 +13,7 @@ const MIC_ERRORS = {
 }
 
 const BAR_COUNT = 50
-const MAX_BAR_H = 48
+const MAX_BAR_H = 36
 
 function buildDisplayBars(history) {
   const pad = Math.max(0, BAR_COUNT - history.length)
@@ -28,10 +28,14 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
   const [micError, setMicError] = useState(null)
   const [capturedBars, setCapturedBars] = useState([])
   const [showTurnAlert, setShowTurnAlert] = useState(false)
+  const [countdown, setCountdown] = useState(null)
   const capturedBlobRef = useRef(null)
   const turnAlertTimerRef = useRef(null)
+  const pigTimerRef = useRef(null)
+  const countdownIntervalRef = useRef(null)
+  const stageRef = useRef(stage)
 
-  const { startMic, stopForReview, stopMicOnly, uploadBlob, micLevel, waveformHistory } = useWebRTC(socket, true, false, null)
+  const { startMic, stopForReview, stopMicOnly, uploadBlob, stopMicAndUpload, micLevel, waveformHistory } = useWebRTC(socket, true, false, null)
 
   // Reset when a new monster or retry arrives
   useEffect(() => {
@@ -46,6 +50,53 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
       turnAlertTimerRef.current = setTimeout(() => setShowTurnAlert(false), 3000)
     }
     return () => clearTimeout(turnAlertTimerRef.current)
+  }, [phase, quoteFlipKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep stageRef current so timer callbacks can read latest stage
+  useEffect(() => { stageRef.current = stage }, [stage])
+
+  // Cancel turn timer when player self-submits
+  useEffect(() => {
+    if (stage === 'review' || stage === 'done') {
+      clearTimeout(pigTimerRef.current)
+      clearInterval(countdownIntervalRef.current)
+      setCountdown(null)
+    }
+  }, [stage])
+
+  // Speaker timeout: starts from beginning of turn, 25s then 10s countdown
+  useEffect(() => {
+    if (phase !== 'speaking') return
+    clearTimeout(pigTimerRef.current)
+    clearInterval(countdownIntervalRef.current)
+    setCountdown(null)
+    pigTimerRef.current = setTimeout(() => {
+      let secs = 10
+      setCountdown(secs)
+      countdownIntervalRef.current = setInterval(() => {
+        secs -= 1
+        if (secs <= 0) {
+          clearInterval(countdownIntervalRef.current)
+          setCountdown(null)
+          const currentStage = stageRef.current
+          if (currentStage === 'speaking') {
+            stopMicAndUpload()
+          } else if (currentStage === 'waiting') {
+            stopMicOnly()
+          }
+          if (currentStage !== 'review' && currentStage !== 'done') {
+            socket.emit('done_speaking')
+            setStage('done')
+          }
+        } else {
+          setCountdown(secs)
+        }
+      }, 1000)
+    }, 25000)
+    return () => {
+      clearTimeout(pigTimerRef.current)
+      clearInterval(countdownIntervalRef.current)
+    }
   }, [phase, quoteFlipKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleReady = async () => {
@@ -87,16 +138,10 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
   const displayBars = buildDisplayBars(waveformHistory)
   const solvedCount = solvedPositions.length
 
-  return (
-    <div className="waiting-layout">
+  const alertActive = showTurnAlert && stage === 'ready'
 
-      {showTurnAlert && stage === 'ready' && (
-        <div className="turn-popup">
-          <div className="turn-popup-title">Your Turn to Speak!</div>
-          <div className="turn-popup-sub">Read the Words of Wisdom card in your monster's voice</div>
-          <div className="turn-popup-arrow">↓</div>
-        </div>
-      )}
+  return (
+    <div className={`waiting-layout${alertActive ? ' turn-active' : ''}`}>
 
       {/* Header */}
       <div className="waiting-header">
@@ -123,7 +168,7 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
               const showWrong = lastResult && !lastResult.correct && lastResult.guessedPosition === position
 
               return (
-                <div key={position} className="monster-card-flipper">
+                <div key={position} className={`monster-card-flipper${isMine ? ' monster-card-flipper-mine' : ''}`}>
                   <div className={`monster-card-inner ${isSolved ? 'is-flipped' : ''}`}>
                     <div className={[
                       'monster-card monster-card-face monster-card-front',
@@ -174,12 +219,19 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
                   {/* READY */}
                   {stage === 'ready' && (
                     <>
+                      {alertActive && (
+                        <div className="turn-popup">
+                          <div className="turn-popup-title">Your Turn to Speak!</div>
+                          <div className="turn-popup-sub">Read the Words of Wisdom card in your monster's voice</div>
+                          <div className="turn-popup-arrow">↓</div>
+                        </div>
+                      )}
                       {isHttps && !micError && (
                         <p className="ready-hint">
                           {micGrantedBefore ? 'Ready? Tap to start recording.' : 'Tap below — your browser will ask for microphone permission.'}
                         </p>
                       )}
-                      <button className={`btn btn-ready${stage === 'ready' ? ' btn-ready-pulse' : ''}`} onClick={handleReady} disabled={!isHttps}>
+                      <button className="btn btn-ready btn-ready-pulse" onClick={handleReady} disabled={!isHttps}>
                         I'm Ready to Speak
                       </button>
                     </>
@@ -233,6 +285,10 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
                     <div className="done-message">Uploading... spotters are listening!</div>
                   )}
                 </>
+              )}
+
+              {countdown !== null && (
+                <div className="timeout-countdown">Auto-submitting in {countdown}s</div>
               )}
             </div>
           </div>
