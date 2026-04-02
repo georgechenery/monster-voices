@@ -618,6 +618,14 @@ io.on('connection', (socket) => {
     }, 3000);
   });
 
+  // Speaker started recording — broadcast so others can show "Speaking" status
+  socket.on('speaker_recording', () => {
+    const code = socket.data.roomCode;
+    const room = rooms[code];
+    if (!room || !room.round) return;
+    socket.to(code).emit('speaker_recording');
+  });
+
   // Spotter timed out — skip the guess and advance
   socket.on('skip_guess', () => {
     const code = socket.data.roomCode;

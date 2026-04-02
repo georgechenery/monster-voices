@@ -106,6 +106,7 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
     if (result === true) {
       localStorage.setItem('mic-granted', 'true')
       setStage('speaking')
+      socket.emit('speaker_recording')
     } else {
       setStage('ready')
       setMicError(result)

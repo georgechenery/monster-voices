@@ -1367,6 +1367,35 @@ body {
   text-align: right;
 }
 
+/* ===== SCOREBOARD ROLE BADGES ===== */
+.scoreboard-role {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.15em 0.45em;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Spotter states */
+.scoreboard-role-waiting  { background: rgba(100,160,255,0.12); color: #7aaeff; border: 1px solid rgba(100,160,255,0.3); }
+.scoreboard-role-guessing { background: rgba(255,200,60,0.2);   color: #ffd44a; border: 1px solid rgba(255,200,60,0.45); }
+/* Speaker states */
+.scoreboard-role-thinking     { background: rgba(180,140,255,0.15); color: #c4a0ff; border: 1px solid rgba(180,140,255,0.35); }
+.scoreboard-role-speaking     { background: rgba(80,220,120,0.2);   color: #5ddf8a; border: 1px solid rgba(80,220,120,0.5); }
+.scoreboard-role-being-guessed{ background: rgba(255,200,60,0.15);  color: #ffc83c; border: 1px solid rgba(255,200,60,0.35); }
+/* Historical outcomes */
+.scoreboard-role-guessed      { background: rgba(80,220,120,0.12);  color: #4cc977; border: 1px solid rgba(80,220,120,0.3); }
+.scoreboard-role-encore       { background: rgba(255,140,60,0.18);  color: #ffaa66; border: 1px solid rgba(255,140,60,0.4); }
+.scoreboard-role-not-guessed  { background: rgba(255,80,80,0.15);   color: #ff7070; border: 1px solid rgba(255,80,80,0.35); }
+/* Upcoming */
+.scoreboard-role-next         { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.18); }
+
+.scoreboard-item-speaking { background: rgba(80,220,120,0.08); border-color: rgba(80,220,120,0.3); }
+.scoreboard-item-done     { opacity: 0.65; }
+
 /* ===== ROUND RESULTS OVERLAY ===== */
 .overlay-backdrop {
   position: fixed;
@@ -3301,6 +3330,16 @@ body {
   color: #fff;
 }
 
+.scoreboard-leader .scoreboard-role-waiting      { background: #2a5fdd; color: #fff; border-color: #5588ff; }
+.scoreboard-leader .scoreboard-role-guessing     { background: #8a6200; color: #fff; border-color: #c49000; }
+.scoreboard-leader .scoreboard-role-thinking     { background: #5b2eb5; color: #fff; border-color: #9a70e0; }
+.scoreboard-leader .scoreboard-role-speaking     { background: #1a7a3c; color: #fff; border-color: #4db870; }
+.scoreboard-leader .scoreboard-role-being-guessed{ background: #7a5c00; color: #fff; border-color: #c49000; }
+.scoreboard-leader .scoreboard-role-guessed      { background: #1a7a3c; color: #fff; border-color: #4db870; }
+.scoreboard-leader .scoreboard-role-encore       { background: #8a4000; color: #fff; border-color: #c46a20; }
+.scoreboard-leader .scoreboard-role-not-guessed  { background: #9a1a1a; color: #fff; border-color: #d05050; }
+.scoreboard-leader .scoreboard-role-next         { background: #555;    color: #fff; border-color: #888; }
+
 .scoreboard-rank {
   color: #555;
 }
@@ -3312,6 +3351,23 @@ body {
 .scoreboard-score {
   color: #000;
 }
+
+/* Spotter states */
+.scoreboard-role-waiting      { background: #e8f0ff; color: #1a4fcc; border-color: #9bb8f5; }
+.scoreboard-role-guessing     { background: #fff8e0; color: #8a6200; border-color: #e8c84a; }
+/* Speaker states */
+.scoreboard-role-thinking     { background: #f3eeff; color: #5b2eb5; border-color: #c4a0ff; }
+.scoreboard-role-speaking     { background: #e6f9ee; color: #1a7a3c; border-color: #7dd4a0; }
+.scoreboard-role-being-guessed{ background: #fffbe6; color: #7a5c00; border-color: #e8c84a; }
+/* Historical outcomes */
+.scoreboard-role-guessed      { background: #e6f9ee; color: #1a7a3c; border-color: #7dd4a0; }
+.scoreboard-role-encore       { background: #fff3e6; color: #8a4000; border-color: #f5a96a; }
+.scoreboard-role-not-guessed  { background: #ffeaea; color: #9a1a1a; border-color: #f5a0a0; }
+/* Upcoming */
+.scoreboard-role-next         { background: #f0f0f0; color: #555;    border-color: #ccc; }
+
+.scoreboard-item-speaking { background: #f0fbf4; border-color: #7dd4a0; }
+.scoreboard-item-done     { opacity: 0.65; }
 
 /* ---- Guess result overlay (spotter) ---- */
 .guess-result-overlay {
@@ -4026,6 +4082,7 @@ body {
   .scoreboard-rank   { font-size: 0.7rem; min-width: 14px; }
   .scoreboard-name   { font-size: 0.7rem; }
   .scoreboard-score  { font-size: 0.75rem; min-width: 16px; }
+  .scoreboard-role   { font-size: 0.5rem; padding: 0.1em 0.3em; }
 
   /* Grid column: fills the remaining vertical space */
   .waiting-grid-col {

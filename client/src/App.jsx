@@ -34,7 +34,9 @@ export default function App() {
     speakerName: '',
     waitingForGuess: false,
     phase: 'speaking',
-    speakingOrder: []
+    speakingOrder: [],
+    speakerIsRecording: false,
+    speakerStatuses: {}
   })
   const [guessResult, setGuessResult] = useState(null)
   const [roundResults, setRoundResults] = useState(null)
@@ -124,7 +126,9 @@ export default function App() {
         speakerName: firstSpeaker ? firstSpeaker.name : '',
         waitingForGuess: false,
         phase: 'speaking',
-        speakingOrder
+        speakingOrder,
+        speakerIsRecording: false,
+        speakerStatuses: {}
       })
       setView('game')
     })
@@ -147,18 +151,27 @@ export default function App() {
         ...prev,
         currentSpeakerId,
         speakerName,
-        waitingForGuess: false
+        waitingForGuess: false,
+        speakerIsRecording: false
       }))
       setGuessResult(null)
     })
 
+    socket.on('speaker_recording', () => {
+      setRoundState(prev => ({ ...prev, speakerIsRecording: true }))
+    })
+
     socket.on('waiting_for_guess', () => {
-      setRoundState(prev => ({ ...prev, waitingForGuess: true }))
+      setRoundState(prev => ({ ...prev, waitingForGuess: true, speakerIsRecording: false }))
     })
 
     socket.on('guess_result', ({ correct, speakerId, speakerName, position, monsterIndex, guessedPosition, points, scores: newScores, isSecondChance }) => {
       setGuessResult({ correct, speakerId, speakerName, position, monsterIndex, guessedPosition, points, isSecondChance })
       setScores(newScores)
+      setRoundState(prev => {
+        const status = correct ? 'guessed' : isSecondChance ? 'not_guessed' : 'encore'
+        return { ...prev, speakerStatuses: { ...prev.speakerStatuses, [speakerId]: status } }
+      })
       if (correct || isSecondChance) {
         setTimeout(() => {
           setFlippedPositions(prev => prev.includes(position) ? prev : [...prev, position])
@@ -173,7 +186,8 @@ export default function App() {
         ...prev,
         quote,
         phase: 'second_chance',
-        waitingForGuess: false
+        waitingForGuess: false,
+        speakerIsRecording: false
       }))
     })
 

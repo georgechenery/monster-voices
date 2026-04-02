@@ -108,6 +108,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
     if (result === true) {
       localStorage.setItem('mic-granted', 'true')
       setStage('speaking')
+      socket.emit('speaker_recording')
     } else {
       setStage('ready')
       setMicError(result)
@@ -376,7 +377,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
           </div>
           <p className="read-in-voice-label">Read this in your monster's voice:</p>
           <div ref={quoteRef}><QuoteCard quote={quote} flipKey={quoteFlipKey} /></div>
-          <Scoreboard scores={scores} />
+          <Scoreboard scores={scores} roundState={roundState} />
         </div>
       </div>
 

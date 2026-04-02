@@ -194,10 +194,10 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
           <div className="waiting-controls">
             <div className="speaker-status-banner">
               {waitingForGuess ? (
-                <span className="status-guessing">Monster Spotter is making a guess...</span>
+                <span className="status-guessing">The Monster Spotter is making their guess...</span>
               ) : (
                 <span className="status-speaking">
-                  <strong>{speakerName || 'Someone'}</strong> is speaking...
+                  <strong>{speakerName || 'Someone'}</strong> is speaking — listen carefully!
                 </span>
               )}
             </div>
@@ -248,7 +248,7 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
             <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />
           </div>
           <div ref={quoteRef}><QuoteCard quote={quote} flipKey={quoteFlipKey} /></div>
-          <Scoreboard scores={scores} />
+          <Scoreboard scores={scores} roundState={roundState} />
         </div>
       </div>
 

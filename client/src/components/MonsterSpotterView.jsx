@@ -8,7 +8,7 @@ import HelpOverlay from './HelpOverlay'
 import mvLogo from '../assets/brand/mv-logo.png'
 
 export default function MonsterSpotterView({ roundState, guessResult, scores, players, socket, flippedPositions = [], quoteFlipKey = 0, cardRevealActive = false }) {
-  const { shuffledMonsters, quote, waitingForGuess, phase, currentSpeakerId } = roundState
+  const { shuffledMonsters, quote, waitingForGuess, phase, currentSpeakerId, speakerName } = roundState
   const [clickedPosition, setClickedPosition] = useState(null)
   const [revealPending, setRevealPending] = useState(false)
   const [showResult, setShowResult] = useState(false)
@@ -158,8 +158,8 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
           <div className="waiting-controls">
             <div className="status-banner" ref={statusRef}>
               {waitingForGuess
-                ? <span className="status-active">Click a monster to make your guess!</span>
-                : <span className="status-waiting">Listening... wait for the speaker to finish</span>
+                ? <span className="status-active">Which monster is <strong>{speakerName}</strong>? Tap to guess!</span>
+                : <span className="status-waiting"><strong>{speakerName}</strong> is speaking — listen carefully!</span>
               }
             </div>
             {countdown !== null && (
@@ -198,7 +198,7 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
             <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />
           </div>
           <div ref={quoteRef}><QuoteCard quote={quote} flipKey={quoteFlipKey} /></div>
-          <Scoreboard scores={scores} />
+          <Scoreboard scores={scores} roundState={roundState} />
         </div>
       </div>
 
