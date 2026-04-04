@@ -1,3 +1,9 @@
+import { AVATARS } from '../data/avatars'
+
+// Varied durations + negative delays so no two avatars bob in sync
+const BOB_DURATIONS = [2.1, 2.6, 1.9, 2.4, 2.8, 2.2, 2.5, 1.8, 2.7, 2.3, 2.0]
+const BOB_DELAYS    = [-0.4, -1.2, -0.8, -1.7, -0.2, -1.4, -0.6, -1.9, -0.1, -1.1, -0.9]
+
 function getRole(playerId, roundState) {
   if (!roundState) return null
   const {
@@ -65,12 +71,29 @@ export default function Scoreboard({ scores, roundState }) {
               ].filter(Boolean).join(' ')}
             >
               <span className="scoreboard-rank">#{idx + 1}</span>
-              <span className="scoreboard-name">{player.name}</span>
-              {role && (
-                <span className={`scoreboard-role scoreboard-role-${role.replace('_', '-')}`}>
-                  {ROLE_LABELS[role]}
-                </span>
+              {player.avatarId !== undefined && (
+                <div className="scoreboard-avatar-wrap">
+                  <img
+                    src={AVATARS[player.avatarId]}
+                    alt=""
+                    className={`scoreboard-avatar av-a${player.avatarId + 1}`}
+                    style={{
+                      animationName: 'avatar-bob',
+                      animationDuration: `${BOB_DURATIONS[idx % BOB_DURATIONS.length]}s`,
+                      animationDelay: `${BOB_DELAYS[idx % BOB_DELAYS.length]}s`,
+                      animationTimingFunction: 'ease-in-out',
+                    }}
+                  />
+                </div>
               )}
+              <div className="scoreboard-nameblock">
+                <span className="scoreboard-name">{player.name}</span>
+                {role && (
+                  <span className={`scoreboard-role scoreboard-role-${role.replace('_', '-')}`}>
+                    {ROLE_LABELS[role]}
+                  </span>
+                )}
+              </div>
               <span className="scoreboard-score">{player.score}</span>
             </li>
           )

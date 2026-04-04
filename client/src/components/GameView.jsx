@@ -3,6 +3,7 @@ import MonsterSpotterView from './MonsterSpotterView'
 import SpeakerView from './SpeakerView'
 import WaitingPlayerView from './WaitingPlayerView'
 import RoundResults from './RoundResults'
+import ChatPanel from './ChatPanel'
 import monsterBanner from '../assets/brand/monster-banner.jpg'
 
 export default function GameView({
@@ -17,7 +18,9 @@ export default function GameView({
   onStartNextRound,
   flippedPositions = [],
   quoteFlipKey = 0,
-  cardRevealActive = false
+  cardRevealActive = false,
+  chatMessages = [],
+  onSendChat,
 }) {
   if (!myPlayer || !roundState.spotterId) return (
     <div className="loading-screen">
@@ -41,45 +44,51 @@ export default function GameView({
         />
       )}
 
-      {isSpotter && (
-        <MonsterSpotterView
-          roundState={roundState}
-          guessResult={guessResult}
-          scores={scores}
-          players={players}
-          socket={socket}
-          flippedPositions={flippedPositions}
-          quoteFlipKey={quoteFlipKey}
-          cardRevealActive={cardRevealActive}
-        />
-      )}
+      <div className="game-chat-layout">
+        <ChatPanel messages={chatMessages} onSend={onSendChat} myPlayer={myPlayer} />
 
-      {!isSpotter && isSpeaker && (
-        <SpeakerView
-          roundState={roundState}
-          myMonster={myMonster}
-          guessResult={guessResult}
-          scores={scores}
-          socket={socket}
-          flippedPositions={flippedPositions}
-          quoteFlipKey={quoteFlipKey}
-          cardRevealActive={cardRevealActive}
-        />
-      )}
+        <div className="game-view-wrap">
+          {isSpotter && (
+            <MonsterSpotterView
+              roundState={roundState}
+              guessResult={guessResult}
+              scores={scores}
+              players={players}
+              socket={socket}
+              flippedPositions={flippedPositions}
+              quoteFlipKey={quoteFlipKey}
+              cardRevealActive={cardRevealActive}
+            />
+          )}
 
-      {!isSpotter && !isSpeaker && (
-        <WaitingPlayerView
-          roundState={roundState}
-          myMonster={myMonster}
-          guessResult={guessResult}
-          scores={scores}
-          players={players}
-          socket={socket}
-          quoteFlipKey={quoteFlipKey}
-          flippedPositions={flippedPositions}
-          cardRevealActive={cardRevealActive}
-        />
-      )}
+          {!isSpotter && isSpeaker && (
+            <SpeakerView
+              roundState={roundState}
+              myMonster={myMonster}
+              guessResult={guessResult}
+              scores={scores}
+              socket={socket}
+              flippedPositions={flippedPositions}
+              quoteFlipKey={quoteFlipKey}
+              cardRevealActive={cardRevealActive}
+            />
+          )}
+
+          {!isSpotter && !isSpeaker && (
+            <WaitingPlayerView
+              roundState={roundState}
+              myMonster={myMonster}
+              guessResult={guessResult}
+              scores={scores}
+              players={players}
+              socket={socket}
+              quoteFlipKey={quoteFlipKey}
+              flippedPositions={flippedPositions}
+              cardRevealActive={cardRevealActive}
+            />
+          )}
+        </div>
+      </div>
     </div>
   )
 }

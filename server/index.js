@@ -91,8 +91,10 @@ function getNextQuote(room) {
   return quote;
 }
 
-function createPlayer(id, name, isHost = false) {
-  return { id, name, isHost, score: 0 };
+const AVATAR_COUNT = 11;
+
+function createPlayer(id, name, isHost = false, avatarId = 0) {
+  return { id, name, isHost, score: 0, avatarId };
 }
 
 // ---- Classic Mode ----
@@ -219,7 +221,7 @@ function endRound(room, io) {
     };
   });
 
-  const scores = room.players.map(p => ({ id: p.id, name: p.name, score: p.score }));
+  const scores = room.players.map(p => ({ id: p.id, name: p.name, score: p.score, avatarId: p.avatarId }));
 
   io.to(room.code).emit('round_ended', { reveals, scores });
 
@@ -377,7 +379,7 @@ io.on('connection', (socket) => {
       code = generateRoomCode();
     } while (rooms[code]);
 
-    const player = createPlayer(socket.id, playerName, true);
+    const player = createPlayer(socket.id, playerName, true, 0);
     rooms[code] = {
       code,
       hostId: socket.id,
@@ -418,7 +420,12 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const player = createPlayer(socket.id, playerName, false);
+    const takenIds = new Set(room.players.map(p => p.avatarId));
+    let avatarId = 0;
+    for (let i = 0; i < AVATAR_COUNT; i++) {
+      if (!takenIds.has(i)) { avatarId = i; break; }
+    }
+    const player = createPlayer(socket.id, playerName, false, avatarId);
     room.players.push(player);
 
     socket.join(code);
@@ -599,7 +606,7 @@ io.on('connection', (socket) => {
       round.guessedCorrectly[currentSpeakerId] = true;
     }
 
-    const scores = room.players.map(p => ({ id: p.id, name: p.name, score: p.score }));
+    const scores = room.players.map(p => ({ id: p.id, name: p.name, score: p.score, avatarId: p.avatarId }));
 
     io.to(code).emit('guess_result', {
       correct,
@@ -616,6 +623,18 @@ io.on('connection', (socket) => {
     setTimeout(() => {
       advanceSpeaker(room, io);
     }, 3000);
+  });
+
+  socket.on('select_avatar', ({ avatarId }) => {
+    const code = socket.data.roomCode;
+    const room = rooms[code];
+    if (!room || room.phase !== 'waiting') return;
+    const taken = room.players.find(p => p.id !== socket.id && p.avatarId === avatarId);
+    if (taken) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+    player.avatarId = avatarId;
+    io.to(code).emit('avatar_updated', { playerId: socket.id, avatarId });
   });
 
   // Speaker started recording — broadcast so others can show "Speaking" status
@@ -746,6 +765,23 @@ io.on('connection', (socket) => {
     io.to(firstSpeakerId).emit('your_turn', { quote: round.quote });
 
     console.log(`Next round started in room ${code}`);
+  });
+
+  socket.on('chat_message', ({ text }) => {
+    const code = socket.data.roomCode;
+    const room = rooms[code];
+    if (!room) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+    const trimmed = (text || '').toString().trim().slice(0, 200);
+    if (!trimmed) return;
+    io.to(code).emit('chat_message', {
+      playerId: socket.id,
+      playerName: player.name,
+      avatarId: player.avatarId,
+      text: trimmed,
+      ts: Date.now(),
+    });
   });
 
   socket.on('disconnect', () => {

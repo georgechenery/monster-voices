@@ -1,7 +1,12 @@
 import { MONSTERS } from '../data/monsters'
+import { AVATARS } from '../data/avatars'
 
 export default function RoundResults({ reveals, scores, isHost, onStartNextRound }) {
   const sortedScores = [...scores].sort((a, b) => b.score - a.score)
+
+  // Build playerId → avatarId lookup from the scores array
+  const avatarById = {}
+  scores.forEach(s => { avatarById[s.id] = s.avatarId })
 
   return (
     <div className="overlay-backdrop">
@@ -15,17 +20,27 @@ export default function RoundResults({ reveals, scores, isHost, onStartNextRound
               key={reveal.playerId}
               className={`reveal-item ${reveal.guessed ? 'reveal-guessed' : 'reveal-not-guessed'}`}
             >
-              <img
-                src={MONSTERS[reveal.monsterIndex]}
-                alt={`Monster ${reveal.monsterIndex + 1}`}
-                className="reveal-monster-img"
-              />
-              <div className="reveal-info">
-                <div className="reveal-player-name">{reveal.playerName}</div>
-                <div className="reveal-monster-name">Monster #{reveal.position + 1}</div>
-                <div className={`reveal-status ${reveal.guessed ? 'status-guessed' : 'status-missed'}`}>
-                  {reveal.guessed ? 'Guessed!' : 'Missed'}
-                </div>
+              {/* Big monster card — green outline = guessed, red = missed */}
+              <div className="reveal-card">
+                <img
+                  src={MONSTERS[reveal.monsterIndex]}
+                  alt={`Monster ${reveal.monsterIndex + 1}`}
+                  className="reveal-card-img"
+                />
+              </div>
+
+              {/* Avatar + player name */}
+              <div className="reveal-player-row">
+                <img
+                  src={AVATARS[avatarById[reveal.playerId] ?? 0]}
+                  alt=""
+                  className="reveal-player-avatar"
+                />
+                <span className="reveal-player-name">{reveal.playerName}</span>
+              </div>
+
+              <div className={`reveal-status ${reveal.guessed ? 'status-guessed' : 'status-missed'}`}>
+                {reveal.guessed ? '✓ Guessed' : '✗ Missed'}
               </div>
             </div>
           ))}
@@ -36,6 +51,11 @@ export default function RoundResults({ reveals, scores, isHost, onStartNextRound
           <div className="scores-list">
             {sortedScores.map((s, idx) => (
               <div key={s.id} className="score-row">
+                <img
+                  src={AVATARS[s.avatarId ?? 0]}
+                  alt=""
+                  className="score-row-avatar"
+                />
                 <span className="score-rank">#{idx + 1}</span>
                 <span className="score-name">{s.name}</span>
                 <span className="score-points">{s.score} pts</span>

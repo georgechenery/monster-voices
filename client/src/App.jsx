@@ -49,6 +49,9 @@ export default function App() {
   // Gauntlet state
   const [gauntletState, setGauntletState] = useState(null)
 
+  // Chat
+  const [chatMessages, setChatMessages] = useState([])
+
   // Preload card-back once on mount (always used)
   useEffect(() => {
     preloadImages([cardBack])
@@ -85,6 +88,13 @@ export default function App() {
       setPlayers(ps)
     })
 
+    socket.on('avatar_updated', ({ playerId, avatarId }) => {
+      setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, avatarId } : p))
+      if (playerId === socket.id) {
+        setMyPlayer(prev => prev ? { ...prev, avatarId } : prev)
+      }
+    })
+
     socket.on('player_left', ({ players: ps, newHostId }) => {
       setPlayers(ps)
       if (newHostId === socket.id) {
@@ -104,11 +114,16 @@ export default function App() {
     })
 
     // ---- Classic game events ----
+    socket.on('chat_message', (msg) => {
+      setChatMessages(prev => [...prev, msg])
+    })
+
     socket.on('game_started', ({ spotterId, shuffledMonsters, quote, speakingOrder, players: ps }) => {
       preloadImages(shuffledMonsters.map(i => MONSTERS[i]))
+      setChatMessages([])
       setGameMode('classic')
       setPlayers(ps)
-      setScores(ps.map(p => ({ id: p.id, name: p.name, score: p.score })))
+      setScores(ps.map(p => ({ id: p.id, name: p.name, score: p.score, avatarId: p.avatarId })))
       setMyMonster(null)
       setGuessResult(null)
       setRoundResults(null)
@@ -204,6 +219,7 @@ export default function App() {
     // ---- Gauntlet game events ----
     socket.on('gauntlet_started', ({ pigId, shuffledMonsters, quote, playerColors, players: ps, strikes, solvedPositions }) => {
       preloadImages(shuffledMonsters.map(i => MONSTERS[i]))
+      setChatMessages([])
       setGameMode('gauntlet')
       setPlayers(ps)
       setMyMonster(null)
@@ -273,6 +289,7 @@ export default function App() {
     })
 
     return () => {
+      socket.off('chat_message')
       socket.off('room_created')
       socket.off('room_joined')
       socket.off('player_joined')
@@ -319,6 +336,14 @@ export default function App() {
     socket.emit('start_game', { mode, pigId })
   }
 
+  const handleSelectAvatar = (avatarId) => {
+    socket.emit('select_avatar', { avatarId })
+  }
+
+  const handleSendChat = (text) => {
+    socket.emit('chat_message', { text })
+  }
+
   const handleStartNextRound = () => {
     setRoundResults(null)
     socket.emit('start_next_round')
@@ -345,6 +370,7 @@ export default function App() {
         selectedPigId={selectedPigId}
         onSetMode={handleSetMode}
         onStartGame={handleStartGame}
+        onSelectAvatar={handleSelectAvatar}
         errorMsg={errorMsg}
       />
     )
@@ -360,6 +386,8 @@ export default function App() {
           myMonster={myMonster}
           quoteFlipKey={quoteFlipKey}
           socket={socket}
+          chatMessages={chatMessages}
+          onSendChat={handleSendChat}
         />
       )
     }
@@ -379,6 +407,8 @@ export default function App() {
         flippedPositions={flippedPositions}
         quoteFlipKey={quoteFlipKey}
         cardRevealActive={cardRevealActive}
+        chatMessages={chatMessages}
+        onSendChat={handleSendChat}
       />
     )
   }

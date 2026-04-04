@@ -1,15 +1,18 @@
+import { useState } from 'react'
 import mvLogo from '../assets/brand/mv-logo.png'
 import monsterBanner from '../assets/brand/monster-banner.jpg'
 import shuffleupigusLogo from '../assets/brand/shuffleupigus-transparent.png'
+import { AVATARS } from '../data/avatars'
 
-export default function WaitingRoom({ roomCode, players, myPlayer, isHost, gameMode, selectedPigId, onSetMode, onStartGame, errorMsg }) {
+export default function WaitingRoom({ roomCode, players, myPlayer, isHost, gameMode, selectedPigId, onSetMode, onStartGame, onSelectAvatar, errorMsg }) {
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+
   const isGauntlet = gameMode === 'gauntlet'
   const minPlayers = isGauntlet ? 2 : 3
   const canStart = players.length >= minPlayers
 
   const handleModeSwitch = (mode) => {
     if (!isHost) return
-    // Default PIG to host when switching to gauntlet
     const pigId = mode === 'gauntlet' ? (myPlayer ? myPlayer.id : players[0]?.id) : null
     onSetMode(mode, pigId)
   }
@@ -23,7 +26,13 @@ export default function WaitingRoom({ roomCode, players, myPlayer, isHost, gameM
     onStartGame(gameMode, selectedPigId)
   }
 
+  const handlePickAvatar = (idx) => {
+    onSelectAvatar(idx)
+    setShowAvatarPicker(false)
+  }
+
   const selectedPig = players.find(p => p.id === selectedPigId)
+  const myAvatarId = myPlayer?.avatarId ?? 0
 
   return (
     <div className="lobby-screen">
@@ -41,7 +50,48 @@ export default function WaitingRoom({ roomCode, players, myPlayer, isHost, gameM
           <p className="wr-code-hint">Share this with your friends!</p>
         </div>
 
-        {/* Game mode selector — host sees toggle, others see current mode */}
+        {/* Avatar display + change button */}
+        <div className="wr-avatar-section">
+          <div className="wr-my-avatar-wrap">
+            <img src={AVATARS[myAvatarId]} alt="Your avatar" className="wr-my-avatar" />
+            <button className="btn-lobby wr-change-avatar-btn" onClick={() => setShowAvatarPicker(true)}>
+              Change Avatar
+            </button>
+          </div>
+        </div>
+
+        {/* Avatar picker modal */}
+        {showAvatarPicker && (
+          <div className="wr-avatar-modal-backdrop" onClick={() => setShowAvatarPicker(false)}>
+            <div className="wr-avatar-modal" onClick={e => e.stopPropagation()}>
+              <div className="wr-avatar-modal-header">
+                <span className="wr-avatar-modal-title">Choose your avatar</span>
+                <button className="wr-avatar-modal-close" onClick={() => setShowAvatarPicker(false)}>✕</button>
+              </div>
+              <div className="wr-avatar-grid">
+                {AVATARS.map((url, idx) => {
+                  const isMine = myAvatarId === idx
+                  const takenBy = players.find(p => p.id !== myPlayer?.id && p.avatarId === idx)
+                  return (
+                    <button
+                      key={idx}
+                      className={`wr-avatar-opt${isMine ? ' wr-avatar-selected' : ''}${takenBy ? ' wr-avatar-taken' : ''}`}
+                      onClick={() => !takenBy && handlePickAvatar(idx)}
+                      disabled={!!takenBy}
+                      aria-label={`Avatar ${idx + 1}${takenBy ? ` — taken by ${takenBy.name}` : ''}`}
+                    >
+                      <img src={url} alt="" />
+                      {takenBy && <span className="wr-avatar-taken-label">{takenBy.name}</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {/* Game mode selector */}
         <div className="wr-mode-section">
           {isHost ? (
             <div className="wr-mode-toggle">
@@ -64,7 +114,6 @@ export default function WaitingRoom({ roomCode, players, myPlayer, isHost, gameM
             </div>
           )}
 
-          {/* PIG selector — gauntlet only */}
           {isGauntlet && (
             <div className="wr-pig-section">
               <p className="wr-pig-label">Who is PIG? (the voice actor)</p>
@@ -96,9 +145,11 @@ export default function WaitingRoom({ roomCode, players, myPlayer, isHost, gameM
           <div className="wr-player-list">
             {players.map(player => (
               <div key={player.id} className="wr-player">
-                <div className="wr-player-token">
-                  {player.name.charAt(0).toUpperCase()}
-                </div>
+                <img
+                  src={AVATARS[player.avatarId ?? 0]}
+                  alt=""
+                  className="wr-player-avatar"
+                />
                 <span className="wr-player-name">{player.name}</span>
                 {player.isHost && <span className="wr-host-badge">Host</span>}
                 {isGauntlet && selectedPigId === player.id && (

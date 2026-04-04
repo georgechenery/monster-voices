@@ -1,8 +1,9 @@
 import monsterBanner from '../assets/brand/monster-banner.jpg'
 import PigView from './PigView'
 import GauntletSpotterView from './GauntletSpotterView'
+import ChatPanel from './ChatPanel'
 
-export default function GauntletGame({ myPlayer, players, gauntletState, myMonster, quoteFlipKey, socket }) {
+export default function GauntletGame({ myPlayer, players, gauntletState, myMonster, quoteFlipKey, socket, chatMessages = [], onSendChat }) {
   if (!myPlayer || !gauntletState) return (
     <div className="loading-screen">
       <div className="loading-spinner">👾</div>
@@ -15,22 +16,27 @@ export default function GauntletGame({ myPlayer, players, gauntletState, myMonst
   return (
     <div className="game-container">
       <div className="lobby-bg lobby-bg-game" style={{ backgroundImage: `url(${monsterBanner})` }} />
-      {isPig ? (
-        <PigView
-          gauntletState={gauntletState}
-          myMonster={myMonster}
-          quoteFlipKey={quoteFlipKey}
-          socket={socket}
-        />
-      ) : (
-        <GauntletSpotterView
-          gauntletState={gauntletState}
-          myPlayer={myPlayer}
-          players={players}
-          quoteFlipKey={quoteFlipKey}
-          socket={socket}
-        />
-      )}
+      <div className="game-chat-layout">
+        <ChatPanel messages={chatMessages} onSend={onSendChat} myPlayer={myPlayer} />
+        <div className="game-view-wrap">
+          {isPig ? (
+            <PigView
+              gauntletState={gauntletState}
+              myMonster={myMonster}
+              quoteFlipKey={quoteFlipKey}
+              socket={socket}
+            />
+          ) : (
+            <GauntletSpotterView
+              gauntletState={gauntletState}
+              myPlayer={myPlayer}
+              players={players}
+              quoteFlipKey={quoteFlipKey}
+              socket={socket}
+            />
+          )}
+        </div>
+      </div>
     </div>
   )
 }
