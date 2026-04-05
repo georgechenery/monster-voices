@@ -21,6 +21,8 @@ export default function GameView({
   cardRevealActive = false,
   chatMessages = [],
   onSendChat,
+  activeEmotes = {},
+  onSendEmote,
 }) {
   if (!myPlayer || !roundState.spotterId) return (
     <div className="loading-screen">
@@ -45,7 +47,12 @@ export default function GameView({
       )}
 
       <div className="game-chat-layout">
-        <ChatPanel messages={chatMessages} onSend={onSendChat} myPlayer={myPlayer} />
+        <ChatPanel
+          messages={chatMessages}
+          onSend={onSendChat}
+          myPlayer={myPlayer}
+          onSendEmote={onSendEmote}
+        />
 
         <div className="game-view-wrap">
           {isSpotter && (
@@ -58,6 +65,7 @@ export default function GameView({
               flippedPositions={flippedPositions}
               quoteFlipKey={quoteFlipKey}
               cardRevealActive={cardRevealActive}
+              activeEmotes={activeEmotes}
             />
           )}
 
@@ -71,6 +79,7 @@ export default function GameView({
               flippedPositions={flippedPositions}
               quoteFlipKey={quoteFlipKey}
               cardRevealActive={cardRevealActive}
+              activeEmotes={activeEmotes}
             />
           )}
 
@@ -85,6 +94,7 @@ export default function GameView({
               quoteFlipKey={quoteFlipKey}
               flippedPositions={flippedPositions}
               cardRevealActive={cardRevealActive}
+              activeEmotes={activeEmotes}
             />
           )}
         </div>

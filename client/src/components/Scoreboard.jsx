@@ -1,4 +1,5 @@
 import { AVATARS } from '../data/avatars'
+import { EMOTES } from '../data/emotes'
 
 // Varied durations + negative delays so no two avatars bob in sync
 const BOB_DURATIONS = [2.1, 2.6, 1.9, 2.4, 2.8, 2.2, 2.5, 1.8, 2.7, 2.3, 2.0]
@@ -49,7 +50,7 @@ const ROLE_LABELS = {
   not_guessed:  'Not Guessed \u2717',
 }
 
-export default function Scoreboard({ scores, roundState }) {
+export default function Scoreboard({ scores, roundState, activeEmotes = {} }) {
   if (!scores || scores.length === 0) return null
 
   const sorted = [...scores].sort((a, b) => b.score - a.score)
@@ -60,6 +61,9 @@ export default function Scoreboard({ scores, roundState }) {
       <ul className="scoreboard-list">
         {sorted.map((player, idx) => {
           const role = getRole(player.id, roundState)
+          const emoteId = activeEmotes[player.id]
+          const emote = emoteId ? EMOTES.find(e => e.id === emoteId) : null
+
           return (
             <li
               key={player.id}
@@ -72,7 +76,7 @@ export default function Scoreboard({ scores, roundState }) {
             >
               <span className="scoreboard-rank">#{idx + 1}</span>
               {player.avatarId !== undefined && (
-                <div className="scoreboard-avatar-wrap">
+                <div className={`scoreboard-avatar-wrap${emote ? ' emote-active' : ''}`}>
                   <img
                     src={AVATARS[player.avatarId]}
                     alt=""
@@ -84,6 +88,11 @@ export default function Scoreboard({ scores, roundState }) {
                       animationTimingFunction: 'ease-in-out',
                     }}
                   />
+                  {emote && (
+                    <span key={`${player.id}-${emoteId}`} className="emote-bubble">
+                      {emote.emoji}
+                    </span>
+                  )}
                 </div>
               )}
               <div className="scoreboard-nameblock">

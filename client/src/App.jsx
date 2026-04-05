@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import socket from './socket'
+import { playTrack, setDucked, setMusicMuted } from './utils/music'
+import { setSfxMuted } from './utils/sounds'
 import Lobby from './components/Lobby'
 import WaitingRoom from './components/WaitingRoom'
 import GameView from './components/GameView'
@@ -51,6 +53,43 @@ export default function App() {
 
   // Chat
   const [chatMessages, setChatMessages] = useState([])
+
+  // Emotes — map of playerId → emoteId for currently-animating players
+  const [activeEmotes, setActiveEmotes] = useState({})
+
+  // Audio controls — persisted across sessions
+  const [musicMuted, setMusicMutedState] = useState(() => localStorage.getItem('music-muted') === 'true')
+  const [sfxMuted,   setSfxMutedState]   = useState(() => localStorage.getItem('sfx-muted')   === 'true')
+
+  const toggleMusic = () => setMusicMutedState(m => {
+    const next = !m
+    localStorage.setItem('music-muted', next)
+    setMusicMuted(next)
+    return next
+  })
+  const toggleSfx = () => setSfxMutedState(m => {
+    const next = !m
+    localStorage.setItem('sfx-muted', next)
+    setSfxMuted(next)
+    return next
+  })
+
+  // Sync initial mute states into modules on mount
+  useEffect(() => {
+    setMusicMuted(musicMuted)
+    setSfxMuted(sfxMuted)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Music track selection: theme during active gameplay, menus everywhere else
+  useEffect(() => {
+    const inActiveGame = view === 'game' && roundResults === null
+    playTrack(inActiveGame ? 'theme' : 'menus')
+  }, [view, roundResults])
+
+  // Duck music while speaker is broadcasting voice
+  useEffect(() => {
+    setDucked(roundState.speakerIsRecording)
+  }, [roundState.speakerIsRecording])
 
   // Preload card-back once on mount (always used)
   useEffect(() => {
@@ -114,6 +153,17 @@ export default function App() {
     })
 
     // ---- Classic game events ----
+    socket.on('emote', ({ playerId, emoteId }) => {
+      setActiveEmotes(prev => ({ ...prev, [playerId]: emoteId }))
+      setTimeout(() => {
+        setActiveEmotes(prev => {
+          const next = { ...prev }
+          if (next[playerId] === emoteId) delete next[playerId]
+          return next
+        })
+      }, 2500)
+    })
+
     socket.on('chat_message', (msg) => {
       setChatMessages(prev => [...prev, msg])
     })
@@ -180,8 +230,8 @@ export default function App() {
       setRoundState(prev => ({ ...prev, waitingForGuess: true, speakerIsRecording: false }))
     })
 
-    socket.on('guess_result', ({ correct, speakerId, speakerName, position, monsterIndex, guessedPosition, points, scores: newScores, isSecondChance }) => {
-      setGuessResult({ correct, speakerId, speakerName, position, monsterIndex, guessedPosition, points, isSecondChance })
+    socket.on('guess_result', ({ correct, speakerId, speakerName, position, monsterIndex, guessedPosition, points, scores: newScores, isSecondChance, wagerOutcomes = [] }) => {
+      setGuessResult({ correct, speakerId, speakerName, position, monsterIndex, guessedPosition, points, isSecondChance, wagerOutcomes })
       setScores(newScores)
       setRoundState(prev => {
         const status = correct ? 'guessed' : isSecondChance ? 'not_guessed' : 'encore'
@@ -289,6 +339,7 @@ export default function App() {
     })
 
     return () => {
+      socket.off('emote')
       socket.off('chat_message')
       socket.off('room_created')
       socket.off('room_joined')
@@ -344,23 +395,26 @@ export default function App() {
     socket.emit('chat_message', { text })
   }
 
+  const handleSendEmote = (emoteId) => {
+    socket.emit('emote', { emoteId })
+  }
+
   const handleStartNextRound = () => {
     setRoundResults(null)
     socket.emit('start_next_round')
   }
 
+  let content = null
   if (view === 'lobby') {
-    return (
+    content = (
       <Lobby
         onCreateRoom={handleCreateRoom}
         onJoinRoom={handleJoinRoom}
         errorMsg={errorMsg}
       />
     )
-  }
-
-  if (view === 'waiting') {
-    return (
+  } else if (view === 'waiting') {
+    content = (
       <WaitingRoom
         roomCode={roomCode}
         players={players}
@@ -374,11 +428,9 @@ export default function App() {
         errorMsg={errorMsg}
       />
     )
-  }
-
-  if (view === 'game') {
+  } else if (view === 'game') {
     if (gameMode === 'gauntlet' && gauntletState) {
-      return (
+      content = (
         <GauntletGame
           myPlayer={myPlayer}
           players={players}
@@ -388,34 +440,73 @@ export default function App() {
           socket={socket}
           chatMessages={chatMessages}
           onSendChat={handleSendChat}
+          activeEmotes={activeEmotes}
+          onSendEmote={handleSendEmote}
+        />
+      )
+    } else {
+      content = (
+        <GameView
+          myPlayer={myPlayer}
+          players={players}
+          roundState={roundState}
+          myMonster={myMonster}
+          guessResult={guessResult}
+          roundResults={roundResults}
+          scores={scores}
+          isHost={isHost}
+          onStartNextRound={handleStartNextRound}
+          socket={socket}
+          flippedPositions={flippedPositions}
+          quoteFlipKey={quoteFlipKey}
+          cardRevealActive={cardRevealActive}
+          chatMessages={chatMessages}
+          onSendChat={handleSendChat}
+          activeEmotes={activeEmotes}
+          onSendEmote={handleSendEmote}
         />
       )
     }
-
-    return (
-      <GameView
-        myPlayer={myPlayer}
-        players={players}
-        roundState={roundState}
-        myMonster={myMonster}
-        guessResult={guessResult}
-        roundResults={roundResults}
-        scores={scores}
-        isHost={isHost}
-        onStartNextRound={handleStartNextRound}
-        socket={socket}
-        flippedPositions={flippedPositions}
-        quoteFlipKey={quoteFlipKey}
-        cardRevealActive={cardRevealActive}
-        chatMessages={chatMessages}
-        onSendChat={handleSendChat}
-      />
-    )
+  } else if (view === 'game_over') {
+    content = <GameOver finalResult={finalResult} />
   }
 
-  if (view === 'game_over') {
-    return <GameOver finalResult={finalResult} />
-  }
-
-  return null
+  return (
+    <>
+      {content}
+      <div className="audio-controls">
+        <button
+          className={`audio-btn${musicMuted ? ' audio-btn-muted' : ''}`}
+          onClick={toggleMusic}
+          title={musicMuted ? 'Unmute music' : 'Mute music'}
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+            <path d="M9 3v12.5a3.5 3.5 0 1 1-2-3.17V7l8-2v6.5a3.5 3.5 0 1 1-2-3.17V3L9 3z"/>
+            {musicMuted && <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>}
+          </svg>
+        </button>
+        <button
+          className={`audio-btn${sfxMuted ? ' audio-btn-muted' : ''}`}
+          onClick={toggleSfx}
+          title={sfxMuted ? 'Unmute sounds' : 'Mute sounds'}
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+            {sfxMuted ? (
+              <>
+                <path d="M13 3L7 8H3v8h4l6 5V3z" opacity="0.5"/>
+                <line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                <line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+              </>
+            ) : (
+              <>
+                <path d="M13 3L7 8H3v8h4l6 5V3z"/>
+                <path d="M17.5 7.5a7 7 0 0 1 0 9" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
+                <path d="M20 5a11 11 0 0 1 0 14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
+              </>
+            )}
+          </svg>
+        </button>
+      </div>
+    </>
+  )
 }

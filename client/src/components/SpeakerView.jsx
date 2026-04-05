@@ -6,6 +6,7 @@ import Scoreboard from './Scoreboard'
 import QuoteCard from './QuoteCard'
 import HelpOverlay from './HelpOverlay'
 import mvLogo from '../assets/brand/mv-logo.png'
+import { playSound, playDealSounds, preloadSounds } from '../utils/sounds'
 
 const MIC_ERRORS = {
   needs_https: "You need a secure connection (https://). Change the URL and accept the browser warning.",
@@ -22,7 +23,7 @@ function buildDisplayBars(history) {
   return Array(pad).fill(0).concat(history).slice(-BAR_COUNT)
 }
 
-export default function SpeakerView({ roundState, myMonster, guessResult, scores, socket, flippedPositions = [], quoteFlipKey = 0, cardRevealActive = false }) {
+export default function SpeakerView({ roundState, myMonster, guessResult, scores, socket, flippedPositions = [], quoteFlipKey = 0, cardRevealActive = false, activeEmotes = {} }) {
   const { quote, phase, shuffledMonsters } = roundState
 
   // 'ready' | 'waiting' | 'speaking' | 'review' | 'done'
@@ -50,6 +51,13 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
     micLevel, waveformHistory,
   } = useWebRTC(socket, true, false, null)
 
+  // Preload sounds when component mounts
+  useEffect(() => { preloadSounds() }, [])
+
+  useEffect(() => {
+    if (cardRevealActive) playDealSounds()
+  }, [cardRevealActive])
+
   // Reset for second chance or new round
   useEffect(() => {
     stopMicOnly()
@@ -57,6 +65,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
     setMicError(null)
     capturedBlobRef.current = null
     setCapturedBars([])
+    playSound('your_turn')
     // Show turn alert on first load and on second-chance
     clearTimeout(turnAlertTimerRef.current)
     setShowTurnAlert(true)
@@ -75,6 +84,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
     const revealTimer = setTimeout(() => {
       setRevealPending(false)
       setShowResult(true)
+      playSound(guessResult.correct ? 'correct' : 'wrong')
     }, 800)
     const clearTimer = setTimeout(() => {
       setShowResult(false)
@@ -174,6 +184,9 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
           }
         } else {
           setCountdown(secs)
+          if (secs <= 5 && stageRef.current !== 'speaking') {
+            playSound('tick', 0, 0.5)
+          }
         }
       }, 1000)
     }, 25000)
@@ -366,6 +379,16 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
               {countdown !== null && (
                 <div className="timeout-countdown">Auto-submitting in {countdown}s</div>
               )}
+
+              {showResult && guessResult?.wagerOutcomes?.length > 0 && (
+                <div className="wager-outcomes">
+                  {guessResult.wagerOutcomes.map((w, i) => (
+                    <span key={i} className={`wager-outcome-chip ${w.delta > 0 ? 'wager-outcome-win' : 'wager-outcome-lose'}`}>
+                      {w.playerName} wagered {w.delta > 0 ? '+1' : '−1'}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -377,7 +400,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
           </div>
           <p className="read-in-voice-label">Read this in your monster's voice:</p>
           <div ref={quoteRef}><QuoteCard quote={quote} flipKey={quoteFlipKey} /></div>
-          <Scoreboard scores={scores} roundState={roundState} />
+          <Scoreboard scores={scores} roundState={roundState} activeEmotes={activeEmotes} />
         </div>
       </div>
 

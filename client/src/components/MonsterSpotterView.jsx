@@ -6,8 +6,9 @@ import Scoreboard from './Scoreboard'
 import QuoteCard from './QuoteCard'
 import HelpOverlay from './HelpOverlay'
 import mvLogo from '../assets/brand/mv-logo.png'
+import { playSound, playDealSounds, preloadSounds } from '../utils/sounds'
 
-export default function MonsterSpotterView({ roundState, guessResult, scores, players, socket, flippedPositions = [], quoteFlipKey = 0, cardRevealActive = false }) {
+export default function MonsterSpotterView({ roundState, guessResult, scores, players, socket, flippedPositions = [], quoteFlipKey = 0, cardRevealActive = false, activeEmotes = {} }) {
   const { shuffledMonsters, quote, waitingForGuess, phase, currentSpeakerId, speakerName } = roundState
   const [clickedPosition, setClickedPosition] = useState(null)
   const [revealPending, setRevealPending] = useState(false)
@@ -27,6 +28,13 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
     replayUrl, handleReplay
   } = useWebRTC(socket, false, true, currentSpeakerId)
 
+  // Preload sounds when component mounts
+  useEffect(() => { preloadSounds() }, [])
+
+  useEffect(() => {
+    if (cardRevealActive) playDealSounds()
+  }, [cardRevealActive])
+
   // Reset clicked position when speaker changes or on second chance
   useEffect(() => {
     setClickedPosition(null)
@@ -44,6 +52,7 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
     const revealTimer = setTimeout(() => {
       setRevealPending(false)
       setShowResult(true)
+      playSound(guessResult.correct ? 'correct' : 'wrong')
     }, 800)
     const clearTimer = setTimeout(() => {
       setShowResult(false)
@@ -74,6 +83,7 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
           socket.emit('skip_guess')
         } else {
           setCountdown(secs)
+          if (secs <= 5) playSound('tick', 0, 0.5)
         }
       }, 1000)
     }, 25000)
@@ -86,6 +96,7 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
   const handleGuess = (position) => {
     if (!waitingForGuess || clickedPosition !== null) return
     setClickedPosition(position)
+    playSound('pick')
     socket.emit('make_guess', { position })
   }
 
@@ -187,6 +198,15 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
                     </div>
                   </>
                 )}
+                {guessResult.wagerOutcomes?.length > 0 && (
+                  <div className="wager-outcomes">
+                    {guessResult.wagerOutcomes.map((w, i) => (
+                      <span key={i} className={`wager-outcome-chip ${w.delta > 0 ? 'wager-outcome-win' : 'wager-outcome-lose'}`}>
+                        {w.playerName} wagered {w.delta > 0 ? '+1' : '−1'}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -198,7 +218,7 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
             <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />
           </div>
           <div ref={quoteRef}><QuoteCard quote={quote} flipKey={quoteFlipKey} /></div>
-          <Scoreboard scores={scores} roundState={roundState} />
+          <Scoreboard scores={scores} roundState={roundState} activeEmotes={activeEmotes} />
         </div>
       </div>
 

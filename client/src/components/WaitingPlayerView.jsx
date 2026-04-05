@@ -6,8 +6,9 @@ import Scoreboard from './Scoreboard'
 import QuoteCard from './QuoteCard'
 import HelpOverlay from './HelpOverlay'
 import mvLogo from '../assets/brand/mv-logo.png'
+import { playSound, playDealSounds, preloadSounds } from '../utils/sounds'
 
-export default function WaitingPlayerView({ roundState, myMonster, guessResult, scores, players, socket, quoteFlipKey = 0, flippedPositions = [], cardRevealActive = false }) {
+export default function WaitingPlayerView({ roundState, myMonster, guessResult, scores, players, socket, quoteFlipKey = 0, flippedPositions = [], cardRevealActive = false, activeEmotes = {} }) {
   const { quote, currentSpeakerId, speakerName, waitingForGuess, phase, shuffledMonsters } = roundState
 
   const {
@@ -22,16 +23,25 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
   const [revealPending, setRevealPending] = useState(false)
   const [showResult, setShowResult] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  const [hasPeeked, setHasPeeked] = useState(false)
+  const [wagerState, setWagerState] = useState('idle') // 'idle' | 'picking' | 'placed'
+  const [wagerPosition, setWagerPosition] = useState(null)
+  const [wagerResult, setWagerResult] = useState(null)
+  const [showWagerHelp, setShowWagerHelp] = useState(false)
 
   const quoteRef = useRef(null)
   const monsterRef = useRef(null)
   const peekRef = useRef(null)
   const mineRevealTimerRef = useRef(null)
 
+  // Preload sounds when component mounts
+  useEffect(() => { preloadSounds() }, [])
+
   // Show "Your Monster" AFTER all cards have finished flipping (not during the animation)
   // Last card (position 8) starts flipping at 8×225ms delay and takes 450ms → done at 2250ms
   useEffect(() => {
     if (!cardRevealActive) return
+    playDealSounds()
     setMineRevealVisible(false) // hide immediately when a new round animation begins
     mineRevealTimerRef.current = setTimeout(() => {
       setMineRevealVisible(true)
@@ -57,6 +67,19 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
   }, [currentSpeakerId])
 
   useEffect(() => {
+    setWagerState('idle')
+    setWagerPosition(null)
+    setWagerResult(null)
+  }, [quoteFlipKey])
+
+  // Reset hasPeeked at the start of each new round (round_ended fires, then a new round starts)
+  useEffect(() => {
+    function onRoundEnded() { setHasPeeked(false) }
+    socket.on('round_ended', onRoundEnded)
+    return () => socket.off('round_ended', onRoundEnded)
+  }, [socket])
+
+  useEffect(() => {
     if (!guessResult) {
       setRevealPending(false)
       setShowResult(false)
@@ -67,6 +90,7 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
     const revealTimer = setTimeout(() => {
       setRevealPending(false)
       setShowResult(true)
+      playSound(guessResult.correct ? 'correct' : 'wrong')
     }, 800)
     const clearTimer = setTimeout(() => {
       setShowResult(false)
@@ -81,16 +105,28 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
     function onPeekGranted({ monsterIndex, speakerName }) {
       setPeekMonster({ monsterIndex, speakerName })
       setPeekState('granted')
+      setHasPeeked(true)
     }
     function onPeekDenied({ speakerName }) {
       setPeekState('denied')
       setTimeout(() => setPeekState('idle'), 3000)
     }
+    function onWagerConfirmed({ position }) {
+      setWagerState('placed')
+      setWagerPosition(position)
+    }
+    function onWagerResult({ delta }) {
+      setWagerResult(delta)
+    }
     socket.on('peek_granted', onPeekGranted)
     socket.on('peek_denied', onPeekDenied)
+    socket.on('wager_confirmed', onWagerConfirmed)
+    socket.on('wager_result', onWagerResult)
     return () => {
       socket.off('peek_granted', onPeekGranted)
       socket.off('peek_denied', onPeekDenied)
+      socket.off('wager_confirmed', onWagerConfirmed)
+      socket.off('wager_result', onWagerResult)
     }
   }, [socket])
 
@@ -102,6 +138,14 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
   const handleDismissPeek = () => {
     setPeekState('idle')
     setPeekMonster(null)
+  }
+
+  const handleWager = (position) => {
+    if (wagerState !== 'picking') return
+    socket.emit('place_wager', { position })
+    playSound('wager')
+    setWagerState('placed')
+    setWagerPosition(position)
   }
 
   // Find which grid position the peeked monster is at
@@ -160,7 +204,11 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
 
                   const showReveal = cardRevealActive && !isFlipped
                   return (
-                    <div key={position} className="monster-card-flipper" ref={isMine ? monsterRef : null}>
+                    <div
+                      key={position}
+                      className={`monster-card-flipper${wagerState === 'picking' && !isFlipped ? ' monster-card-flipper-clickable' : ''}`}
+                      ref={isMine ? monsterRef : null}
+                    >
                       <div
                         className={`monster-card-inner ${isFlipped ? 'is-flipped' : ''} ${showReveal ? 'card-reveal-anim' : ''}`}
                         style={showReveal ? { animationDelay: `${position * 225}ms` } : {}}
@@ -173,7 +221,11 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
                           isGuessedPending ? 'monster-card-guess-pending' : '',
                           showCorrect ? 'monster-card-correct' : '',
                           showWrong ? 'monster-card-wrong' : '',
-                        ].filter(Boolean).join(' ')}>
+                          wagerState === 'picking' && !isFlipped ? 'monster-card-clickable' : '',
+                          wagerState === 'placed' && wagerPosition === position ? 'monster-card-selected' : '',
+                        ].filter(Boolean).join(' ')}
+                          onClick={() => wagerState === 'picking' && !isFlipped ? handleWager(position) : undefined}
+                        >
                           <img src={MONSTERS[monsterIndex]} alt={`Monster ${monsterIndex + 1}`} className="monster-img" />
                         </div>
                         <div className={[
@@ -229,6 +281,51 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
               )}
             </div>
 
+            {/* Wager section */}
+            <div className="wager-section">
+              {wagerState === 'idle' && (
+                <div className="wager-idle-row">
+                  <button
+                    className={`btn btn-wager${!waitingForGuess || hasPeeked ? ' btn-wager-disabled' : ''}`}
+                    onClick={waitingForGuess && !hasPeeked ? () => setWagerState('picking') : undefined}
+                  >
+                    Wager
+                  </button>
+                  <button className="btn-wager-help" onClick={() => setShowWagerHelp(p => !p)}>?</button>
+                  {hasPeeked && <span className="wager-note">Not available — you peeked</span>}
+                  {!waitingForGuess && !hasPeeked && <span className="wager-note">(available after they speak)</span>}
+                </div>
+              )}
+              {wagerState === 'picking' && (
+                <div className="wager-picking-row">
+                  <span className="wager-picking-prompt">Tap a monster to wager 1 point on it</span>
+                  <button className="btn btn-wager-cancel" onClick={() => setWagerState('idle')}>Cancel</button>
+                </div>
+              )}
+              {wagerState === 'placed' && wagerPosition !== null && (
+                <div className="wager-placed">
+                  Wager placed on Monster #{wagerPosition + 1}
+                </div>
+              )}
+              {showWagerHelp && (
+                <div className="wager-help-popup">
+                  <strong>How Wagering Works</strong>
+                  <ul>
+                    <li>Pick right, Spotter picks wrong — win 1 point</li>
+                    <li>Pick the same as the Spotter — point returned</li>
+                    <li>Pick wrong — lose 1 point</li>
+                  </ul>
+                  <p className="wager-help-note">Not available if you have peeked this round.</p>
+                  <button className="btn-wager-help-close" onClick={() => setShowWagerHelp(false)}>Got it</button>
+                </div>
+              )}
+              {showResult && wagerResult !== null && (
+                <div className={`wager-result-mini ${wagerResult > 0 ? 'result-correct' : wagerResult < 0 ? 'result-wrong' : 'result-neutral'}`}>
+                  Wager: {wagerResult > 0 ? '+1 point!' : wagerResult < 0 ? '−1 point' : 'point returned'}
+                </div>
+              )}
+            </div>
+
             {showResult && guessResult && (
               <div className={`guess-result-mini ${guessResult.correct ? 'result-correct' : 'result-wrong'}`}>
                 {guessResult.correct
@@ -237,6 +334,15 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
                     ? `Wrong! ${guessResult.speakerName} was actually monster #${guessResult.position + 1}`
                     : `Wrong guess — ${guessResult.speakerName} gets a second chance!`
                 }
+              </div>
+            )}
+            {showResult && guessResult?.wagerOutcomes?.length > 0 && (
+              <div className="wager-outcomes">
+                {guessResult.wagerOutcomes.map((w, i) => (
+                  <span key={i} className={`wager-outcome-chip ${w.delta > 0 ? 'wager-outcome-win' : 'wager-outcome-lose'}`}>
+                    {w.playerName} wagered {w.delta > 0 ? '+1' : '−1'}
+                  </span>
+                ))}
               </div>
             )}
           </div>
@@ -248,7 +354,7 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
             <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />
           </div>
           <div ref={quoteRef}><QuoteCard quote={quote} flipKey={quoteFlipKey} /></div>
-          <Scoreboard scores={scores} roundState={roundState} />
+          <Scoreboard scores={scores} roundState={roundState} activeEmotes={activeEmotes} />
         </div>
       </div>
 

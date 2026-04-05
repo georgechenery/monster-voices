@@ -137,7 +137,9 @@ function startRound(room) {
     guessedCorrectly: {},
     phase: 'speaking', // 'speaking' | 'second_chance' | 'ended'
     quote,
-    secondQuote: null
+    secondQuote: null,
+    wagers: {},          // playerId -> position they wagered on
+    peekedPlayers: new Set(), // players who received a peek this round
   };
 
   room.phase = 'playing';
@@ -145,6 +147,7 @@ function startRound(room) {
 
 function advanceSpeaker(room, io) {
   const round = room.round;
+  round.wagers = {}; // clear wagers for next speaker turn
 
   if (round.phase === 'speaking') {
     round.currentSpeakerIdx++;
@@ -606,6 +609,28 @@ io.on('connection', (socket) => {
       round.guessedCorrectly[currentSpeakerId] = true;
     }
 
+    // Settle wagers
+    const correctPosition = assignment.position;
+    const wagerOutcomes = []; // non-zero outcomes broadcast to room
+    for (const [wagerId, wageredPosition] of Object.entries(round.wagers)) {
+      const wagerer = room.players.find(p => p.id === wagerId);
+      if (!wagerer) continue;
+      let delta = 0;
+      if (wageredPosition === position) {
+        delta = 0; // same as spotter: refund
+      } else if (wageredPosition === correctPosition) {
+        delta = 1; // right, spotter wrong: win
+      } else {
+        delta = -1; // wrong: lose
+      }
+      wagerer.score += delta;
+      io.to(wagerId).emit('wager_result', { delta, wageredPosition, correctPosition, spotterPosition: position });
+      if (delta !== 0) {
+        wagerOutcomes.push({ playerName: wagerer.name, delta });
+      }
+    }
+    round.wagers = {};
+
     const scores = room.players.map(p => ({ id: p.id, name: p.name, score: p.score, avatarId: p.avatarId }));
 
     io.to(code).emit('guess_result', {
@@ -617,6 +642,7 @@ io.on('connection', (socket) => {
       guessedPosition: position,
       points: pointsAwarded,
       isSecondChance,
+      wagerOutcomes,
       scores
     });
 
@@ -718,6 +744,7 @@ io.on('connection', (socket) => {
     if (!assignment || !speaker) return;
 
     if (granted) {
+      round.peekedPlayers.add(requesterId);
       io.to(requesterId).emit('peek_granted', {
         monsterIndex: assignment.monsterIndex,
         speakerName: speaker.name
@@ -725,6 +752,37 @@ io.on('connection', (socket) => {
     } else {
       io.to(requesterId).emit('peek_denied', { speakerName: speaker.name });
     }
+  });
+
+  socket.on('place_wager', ({ position }) => {
+    const code = socket.data.roomCode;
+    const room = rooms[code];
+    if (!room || !room.round) return;
+    const round = room.round;
+
+    // Only audience players can wager (not spotter, not current speaker)
+    const currentSpeakerId = round.phase === 'second_chance'
+      ? round.secondChancePlayers[round.currentSpeakerIdx]
+      : round.speakingOrder[round.currentSpeakerIdx];
+    if (socket.id === round.spotterId || socket.id === currentSpeakerId) return;
+
+    // Disallow if player has peeked this round
+    if (round.peekedPlayers.has(socket.id)) {
+      socket.emit('wager_rejected', { reason: 'peeked' });
+      return;
+    }
+
+    // Disallow if already wagered this turn
+    if (round.wagers[socket.id] !== undefined) {
+      socket.emit('wager_rejected', { reason: 'already_placed' });
+      return;
+    }
+
+    // Validate position
+    if (typeof position !== 'number' || position < 0 || position > 8) return;
+
+    round.wagers[socket.id] = position;
+    socket.emit('wager_confirmed', { position });
   });
 
   socket.on('audio_upload', ({ audioData, mimeType }) => {
@@ -765,6 +823,22 @@ io.on('connection', (socket) => {
     io.to(firstSpeakerId).emit('your_turn', { quote: round.quote });
 
     console.log(`Next round started in room ${code}`);
+  });
+
+  socket.on('emote', ({ emoteId }) => {
+    const code = socket.data.roomCode;
+    const room = rooms[code];
+    if (!room) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+    const valid = ['cheer', 'laugh', 'shocked', 'boo', 'love', 'think'];
+    if (!valid.includes(emoteId)) return;
+    io.to(code).emit('emote', {
+      playerId: socket.id,
+      playerName: player.name,
+      avatarId: player.avatarId,
+      emoteId,
+    });
   });
 
   socket.on('chat_message', ({ text }) => {

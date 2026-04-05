@@ -981,6 +981,164 @@ body {
   color: #000;
 }
 
+/* ===== EMOTE PICKER ===== */
+.chat-emote-area {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.chat-emote-btn {
+  background: #f0f0f0;
+  border: 2px solid #000;
+  border-radius: var(--radius-sm);
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  height: 2.1rem;
+  padding: 0 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.chat-emote-btn:hover {
+  background: #ddd;
+}
+
+.emote-picker {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  background: #fff;
+  border: 2.5px solid #000;
+  border-radius: var(--radius-md);
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.15);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 8px;
+  z-index: 200;
+  width: 180px;
+}
+
+.emote-opt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 7px 4px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.emote-opt:hover {
+  background: #f0f0f0;
+  border-color: #000;
+}
+
+.emote-opt-label {
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 0.7rem;
+  color: #000;
+  letter-spacing: 0.03em;
+}
+
+/* ===== EMOTE BUBBLE on scoreboard avatars ===== */
+.scoreboard-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.emote-bubble {
+  position: absolute;
+  top: -14px;
+  right: -10px;
+  font-size: 1.3rem;
+  line-height: 1;
+  animation: emote-bubble-pop 2.5s ease-out forwards;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes emote-bubble-pop {
+  0%   { transform: scale(0) translateY(0);       opacity: 0; }
+  15%  { transform: scale(1.3) translateY(0);     opacity: 1; }
+  30%  { transform: scale(1) translateY(0);       opacity: 1; }
+  75%  { transform: scale(1) translateY(-8px);    opacity: 1; }
+  100% { transform: scale(0.8) translateY(-14px); opacity: 0; }
+}
+
+.emote-active {
+  animation: emote-swell 2.5s ease-in-out forwards;
+  position: relative;
+  z-index: 50;
+}
+
+@keyframes emote-swell {
+  0%   { transform: scale(1)   rotate(0deg); }
+  20%  { transform: scale(2.5) rotate(0deg); }   /* fully swelled */
+  27%  { transform: scale(2.5) rotate(-9deg); }  /* shake starts */
+  34%  { transform: scale(2.5) rotate(9deg); }
+  41%  { transform: scale(2.5) rotate(-6deg); }
+  48%  { transform: scale(2.5) rotate(5deg); }
+  55%  { transform: scale(2.5) rotate(0deg); }   /* shake done, hold */
+  65%  { transform: scale(2.5) rotate(0deg); }   /* hold ends */
+  85%  { transform: scale(1)   rotate(0deg); }   /* shrunk */
+  100% { transform: scale(1)   rotate(0deg); }
+}
+
+/* ===== AUDIO CONTROLS (bottom-left, always on top) ===== */
+.audio-controls {
+  position: fixed;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  gap: 8px;
+  z-index: 1000;
+  opacity: 0.45;
+  transition: opacity 0.2s;
+}
+.audio-controls:hover {
+  opacity: 1;
+}
+
+.audio-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #000;
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.18);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+  flex-shrink: 0;
+}
+.audio-btn:hover {
+  background: #000;
+  color: #fff;
+}
+.audio-btn.audio-btn-muted {
+  background: #f0f0f0;
+  color: #aaa;
+  border-color: #aaa;
+}
+.audio-btn.audio-btn-muted:hover {
+  background: #000;
+  color: #fff;
+  border-color: #000;
+}
+
 /* ===== MOBILE: chat toggle button ===== */
 .chat-toggle-btn {
   display: none;
@@ -1983,7 +2141,9 @@ body {
 .reveal-card-img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
+  border-radius: 6px;
+  transform: scale(1.12); /* matches .monster-img — fills card edge-to-edge */
 }
 
 /* Avatar + player name row */
@@ -3258,6 +3418,182 @@ body {
   margin-left: 4px;
 }
 
+/* ===== WAGER ===== */
+.wager-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.wager-idle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-wager {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1.5px dashed var(--border-glow);
+  border-radius: var(--radius-md);
+  padding: 8px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-wager:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-purple);
+  border-style: solid;
+}
+.btn-wager-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+.btn-wager-help {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-glow);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-wager-help:hover {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+.wager-note {
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+
+.wager-picking-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.wager-picking-prompt {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent-yellow, #f59e0b);
+}
+
+.btn-wager-cancel {
+  background: transparent;
+  border: 1.5px solid var(--border-glow);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.wager-placed {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 6px 16px;
+  border: 1.5px solid var(--border-glow);
+  border-radius: var(--radius-md);
+}
+
+.wager-help-popup {
+  background: #fff;
+  border: 2.5px solid #000;
+  border-radius: var(--radius-md);
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.15);
+  padding: 14px 18px;
+  max-width: 280px;
+  text-align: left;
+  font-size: 0.85rem;
+  color: #000;
+}
+.wager-help-popup strong {
+  display: block;
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+.wager-help-popup ul {
+  margin: 0 0 8px 0;
+  padding-left: 18px;
+  line-height: 1.6;
+}
+.wager-help-note {
+  font-size: 0.78rem;
+  opacity: 0.65;
+  margin: 6px 0 10px;
+}
+.btn-wager-help-close {
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 5px 14px;
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: block;
+  margin: 0 auto;
+}
+
+.wager-result-mini {
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+.wager-result-mini.result-correct { color: #16a34a; background: rgba(22,163,74,0.12); }
+.wager-result-mini.result-wrong   { color: #dc2626; background: rgba(220,38,38,0.1); }
+.wager-result-mini.result-neutral { color: var(--text-secondary); background: rgba(255,255,255,0.08); }
+
+/* Wager outcome chips — room-wide notice, non-distracting */
+.wager-outcomes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin: 10px 0 2px;
+}
+
+.guess-result-overlay .wager-outcomes {
+  margin-top: 14px;
+  border-top: 1px solid rgba(0,0,0,0.1);
+  padding-top: 10px;
+}
+
+.wager-outcome-chip {
+  font-size: 0.75rem;
+  font-family: 'MonsterHeadline', sans-serif;
+  letter-spacing: 0.02em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.wager-outcome-win  { background: rgba(22,163,74,0.12);  color: #16a34a; }
+.wager-outcome-lose { background: rgba(220,38,38,0.08);  color: #dc2626; }
+
 /* ===== PEEKED MONSTER CARD ===== */
 .monster-card-peeked {
   border: 3px solid #fff !important;
@@ -3956,35 +4292,22 @@ body {
   color: #555;
 }
 
+/* reveal-item is now transparent/borderless — no background override needed */
 .reveal-item {
-  background: #f8f8f8;
-  border-color: #bbb;
+  background: transparent;
+  border: none;
 }
 
-.reveal-guessed {
-  background: #f8f8f8;
-  border-color: #000;
-}
-
-.reveal-not-guessed {
-  border-color: #bbb;
-}
+/* Keep the colored card outlines (green/red) — they are semantic, not decorative */
+/* No override for .reveal-guessed .reveal-card or .reveal-not-guessed .reveal-card */
 
 .reveal-player-name {
   color: #000;
 }
 
-.reveal-monster-name {
-  color: #555;
-}
-
-.status-guessed {
-  color: #000;
-}
-
-.status-missed {
-  color: #888;
-}
+/* Keep status colours semantic: green = correct, red = missed */
+.status-guessed { color: #16a34a; }
+.status-missed  { color: #dc2626; }
 
 .results-scores {
   border-top-color: #ccc;
@@ -4093,6 +4416,42 @@ body {
   color: #000;
   border-color: #000;
   border-style: solid;
+}
+
+/* ---- Wager UI ---- */
+.btn-wager {
+  color: #000;
+  border-color: #000;
+  border-style: dashed;
+}
+
+.btn-wager:hover {
+  color: #000;
+  border-color: #000;
+  border-style: solid;
+}
+
+.btn-wager-help {
+  color: #000;
+  border-color: #000;
+}
+
+.wager-picking-prompt {
+  color: #000;
+}
+
+.btn-wager-cancel {
+  color: #555;
+  border-color: #999;
+}
+
+.wager-placed {
+  color: #555;
+  border-color: #bbb;
+}
+
+.wager-note {
+  color: #555;
 }
 
 .peek-status {

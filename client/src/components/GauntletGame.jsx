@@ -3,7 +3,7 @@ import PigView from './PigView'
 import GauntletSpotterView from './GauntletSpotterView'
 import ChatPanel from './ChatPanel'
 
-export default function GauntletGame({ myPlayer, players, gauntletState, myMonster, quoteFlipKey, socket, chatMessages = [], onSendChat }) {
+export default function GauntletGame({ myPlayer, players, gauntletState, myMonster, quoteFlipKey, socket, chatMessages = [], onSendChat, activeEmotes = {}, onSendEmote }) {
   if (!myPlayer || !gauntletState) return (
     <div className="loading-screen">
       <div className="loading-spinner">👾</div>
@@ -17,7 +17,7 @@ export default function GauntletGame({ myPlayer, players, gauntletState, myMonst
     <div className="game-container">
       <div className="lobby-bg lobby-bg-game" style={{ backgroundImage: `url(${monsterBanner})` }} />
       <div className="game-chat-layout">
-        <ChatPanel messages={chatMessages} onSend={onSendChat} myPlayer={myPlayer} />
+        <ChatPanel messages={chatMessages} onSend={onSendChat} myPlayer={myPlayer} onSendEmote={onSendEmote} />
         <div className="game-view-wrap">
           {isPig ? (
             <PigView
