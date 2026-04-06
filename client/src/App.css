@@ -781,7 +781,7 @@ body {
 /* Flex row: chat panel on left, game content fills the rest */
 .game-chat-layout {
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
   height: 100%;
   align-items: flex-start; /* panel grows from top, doesn't stretch */
 }
@@ -1047,6 +1047,62 @@ body {
   font-size: 0.7rem;
   color: #000;
   letter-spacing: 0.03em;
+}
+
+/* ===== FLOATING EMOTE POPUP (off-screen players) ===== */
+.scoreboard-float-popup {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 300;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.scoreboard-float-popup.popup-from-below {
+  animation: float-from-below 2.5s ease-in-out forwards;
+}
+
+.scoreboard-float-popup.popup-from-above {
+  animation: float-from-above 2.5s ease-in-out forwards;
+}
+
+@keyframes float-from-below {
+  0%   { transform: translateX(-50%) translateY(100px); opacity: 0; }
+  12%  { transform: translateX(-50%) translateY(0);     opacity: 1; }
+  75%  { transform: translateX(-50%) translateY(0);     opacity: 1; }
+  100% { transform: translateX(-50%) translateY(100px); opacity: 0; }
+}
+
+@keyframes float-from-above {
+  0%   { transform: translateX(-50%) translateY(-100px); opacity: 0; }
+  12%  { transform: translateX(-50%) translateY(0);      opacity: 1; }
+  75%  { transform: translateX(-50%) translateY(0);      opacity: 1; }
+  100% { transform: translateX(-50%) translateY(-100px); opacity: 0; }
+}
+
+/* Avatar inside the popup is larger for visibility */
+.scoreboard-float-popup .scoreboard-avatar-wrap {
+  width: 80px;
+  height: 80px;
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
+  background: #fff;
+}
+.scoreboard-float-popup .scoreboard-avatar { width: 84px; height: 84px; }
+
+.scoreboard-float-name {
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 0.8rem;
+  color: #000;
+  background: #fff;
+  border: 2px solid #000;
+  border-radius: 999px;
+  padding: 2px 10px;
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.15);
+  white-space: nowrap;
 }
 
 /* ===== EMOTE BUBBLE on scoreboard avatars ===== */
@@ -1951,6 +2007,7 @@ body {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 0.15rem;
 }
 
@@ -3201,6 +3258,21 @@ body {
   margin-bottom: 4px;
 }
 
+/* ===== PEEK + WAGER ROW ===== */
+.peek-wager-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+}
+.peek-wager-row .peek-section,
+.peek-wager-row .wager-section {
+  margin: 0;
+  flex: 1;
+  align-items: center;
+}
+
 /* ===== ASK TO PEEK ===== */
 .peek-section {
   display: flex;
@@ -3769,6 +3841,12 @@ body {
   position: relative;
 }
 
+/* Chat panel: wider in-game and offset to align its top with the monster grid */
+.game-chat-layout > .chat-panel {
+  width: 372px;
+  margin-top: 2.8rem; /* clears the waiting-header so top aligns with the monster grid */
+}
+
 /* Game-specific banner: no multiply blend (avoids white=transparent on dark body),
    lower opacity so it's atmospheric but not distracting */
 .lobby-bg-game {
@@ -4087,10 +4165,13 @@ body {
   letter-spacing: 0.02em;
 }
 
-/* Center header content across full width; ? button sits top-right via absolute */
+/* Center header content over monster grid (not the full layout width).
+   padding-right = right-col width + body gap, so justify-content:center
+   references only the grid column area. */
 .waiting-header {
   justify-content: center;
   position: relative;
+  padding-right: calc(320px + 1.5rem);
 }
 .waiting-header .btn-help {
   position: absolute;

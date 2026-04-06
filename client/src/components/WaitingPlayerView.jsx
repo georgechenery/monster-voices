@@ -260,6 +260,7 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
               </button>
             )}
 
+            <div className="peek-wager-row">
             <div className="peek-section" ref={peekRef}>
               {peekState === 'idle' && (
                 <button
@@ -325,6 +326,7 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
                 </div>
               )}
             </div>
+            </div>{/* end peek-wager-row */}
 
             {showResult && guessResult && (
               <div className={`guess-result-mini ${guessResult.correct ? 'result-correct' : 'result-wrong'}`}>
