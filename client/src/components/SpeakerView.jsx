@@ -6,7 +6,8 @@ import Scoreboard from './Scoreboard'
 import QuoteCard from './QuoteCard'
 import HelpOverlay from './HelpOverlay'
 import mvLogo from '../assets/brand/mv-logo.png'
-import { playSound, playDealSounds, preloadSounds } from '../utils/sounds'
+import { playSound, playDealSounds, preloadSounds, playDrumroll, stopDrumroll } from '../utils/sounds'
+import { setGameplayMuted } from '../utils/music'
 
 const MIC_ERRORS = {
   needs_https: "You need a secure connection (https://). Change the URL and accept the browser warning.",
@@ -60,6 +61,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
 
   // Reset for second chance or new round
   useEffect(() => {
+    setGameplayMuted(false) // ensure music plays at start of each turn
     stopMicOnly()
     setStage('ready')
     setMicError(null)
@@ -80,10 +82,12 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
       return
     }
     setRevealPending(true)
+    playDrumroll(800)
     setShowResult(false)
     const revealTimer = setTimeout(() => {
       setRevealPending(false)
       setShowResult(true)
+      setGameplayMuted(false)
       playSound(guessResult.correct ? 'correct' : 'wrong')
     }, 800)
     const clearTimer = setTimeout(() => {
@@ -92,6 +96,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
     return () => {
       clearTimeout(revealTimer)
       clearTimeout(clearTimer)
+      stopDrumroll()
     }
   }, [guessResult])
 
@@ -112,6 +117,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
   }
 
   const handleReady = async () => {
+    setGameplayMuted(true)
     setMicError(null)
     setStage('waiting') // show "Get Ready..." immediately while mic initialises
     const result = await startMic()
@@ -150,9 +156,9 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
   // Keep stageRef current so timer callbacks can read latest stage
   useEffect(() => { stageRef.current = stage }, [stage])
 
-  // Cancel turn timer when player self-submits
+  // Cancel turn timer when player hits Ready to Speak or self-submits
   useEffect(() => {
-    if (stage === 'review' || stage === 'done') {
+    if (stage === 'waiting' || stage === 'speaking' || stage === 'review' || stage === 'done') {
       clearTimeout(speakerTimerRef.current)
       clearInterval(countdownIntervalRef.current)
       setCountdown(null)

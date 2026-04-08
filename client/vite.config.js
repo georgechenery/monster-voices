@@ -5,7 +5,8 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 export default defineConfig({
   plugins: [react(), basicSsl()],
   define: {
-    'process.env': {}
+    'process.env': {},
+    global: 'globalThis',
   },
   server: {
     host: '0.0.0.0',

@@ -5,12 +5,13 @@ const VOLUME_NORMAL = 0.4
 const VOLUME_DUCKED = 0.07
 const FADE_MS       = 700
 
-let menuAudio  = null
-let themeAudio = null
-let _current   = null  // 'menus' | 'theme' | null
-let _muted     = false
-let _ducked    = false
-let _fadeTimer = null
+let menuAudio       = null
+let themeAudio      = null
+let _current        = null  // 'menus' | 'theme' | null
+let _muted          = false  // user's preference toggle
+let _gameplayMuted  = false  // gameplay events (recording, listening, drumroll)
+let _ducked         = false
+let _fadeTimer      = null
 
 function getAudio(track) {
   if (track === 'menus') {
@@ -22,7 +23,7 @@ function getAudio(track) {
 }
 
 function targetVol() {
-  if (_muted) return 0
+  if (_muted || _gameplayMuted) return 0
   return _ducked ? VOLUME_DUCKED : VOLUME_NORMAL
 }
 
@@ -82,7 +83,16 @@ export function setDucked(ducked) {
   if (_current) fadeTo(getAudio(_current), targetVol(), ducked ? 400 : 900)
 }
 
+// User's on/off preference — called from App's toggle button
 export function setMusicMuted(muted) {
   _muted = muted
   if (_current) fadeTo(getAudio(_current), targetVol(), 200)
+}
+
+// Gameplay mute — called by game views during recording/listening/drumroll suspense.
+// Respects user preference: unmuting gameplay never overrides the user's own mute.
+export function setGameplayMuted(muted) {
+  if (_gameplayMuted === muted) return
+  _gameplayMuted = muted
+  if (_current) fadeTo(getAudio(_current), targetVol(), muted ? 150 : 400)
 }

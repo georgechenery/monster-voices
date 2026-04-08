@@ -11,6 +11,7 @@ const modules = {
   wager:     () => import('../assets/sounds/wager.ogg'),
   game_over: () => import('../assets/sounds/game_over.ogg'),
   tick:      () => import('../assets/sounds/tick.ogg'),
+  drumroll:  () => import('../assets/sounds/drumroll.mp3'),
 }
 
 // Cache resolved URLs after first load
@@ -36,6 +37,7 @@ let preloaded = false
 export function preloadSounds() {
   if (preloaded) return
   preloaded = true
+  // Resolve and cache all asset URLs (including drumroll) so they're instant at play time
   Object.keys(modules).forEach(name => getUrl(name))
 }
 
@@ -68,5 +70,46 @@ export async function playSound(name, delay = 0, volume = 1) {
 export function playDealSounds() {
   for (let i = 0; i < 9; i++) {
     playSound('deal', i * 225)
+  }
+}
+
+// Drumroll — total duration of the file in seconds
+const DRUMROLL_TOTAL_S = 8.76
+let _drumrollEl = null
+
+/**
+ * Play the tail end of the drumroll so the crash lands after suspenseMs milliseconds.
+ * Creates a fresh Audio element each call (URL is served from Vite bundle cache so
+ * it's instant), waits for loadedmetadata before seeking so currentTime is reliable.
+ */
+export async function playDrumroll(suspenseMs = 800) {
+  if (_sfxMuted) return
+
+  const url = urlCache['drumroll'] || await getUrl('drumroll')
+  if (!url) return
+
+  // Stop any previous drumroll
+  stopDrumroll()
+
+  const audio = new Audio(url)
+  _drumrollEl = audio
+
+  const startAt = Math.max(0, DRUMROLL_TOTAL_S - suspenseMs / 1000)
+
+  // Seek after metadata loads — only then is currentTime reliable
+  audio.addEventListener('loadedmetadata', () => {
+    // Guard: stopDrumroll may have nulled _drumrollEl while we waited
+    if (_drumrollEl !== audio) return
+    audio.currentTime = startAt
+    audio.play().catch(() => {})
+  }, { once: true })
+
+  audio.load()
+}
+
+export function stopDrumroll() {
+  if (_drumrollEl) {
+    _drumrollEl.pause()
+    _drumrollEl = null
   }
 }

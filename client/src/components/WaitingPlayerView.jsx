@@ -6,7 +6,8 @@ import Scoreboard from './Scoreboard'
 import QuoteCard from './QuoteCard'
 import HelpOverlay from './HelpOverlay'
 import mvLogo from '../assets/brand/mv-logo.png'
-import { playSound, playDealSounds, preloadSounds } from '../utils/sounds'
+import { playSound, playDealSounds, preloadSounds, playDrumroll, stopDrumroll } from '../utils/sounds'
+import { setGameplayMuted } from '../utils/music'
 
 export default function WaitingPlayerView({ roundState, myMonster, guessResult, scores, players, socket, quoteFlipKey = 0, flippedPositions = [], cardRevealActive = false, activeEmotes = {} }) {
   const { quote, currentSpeakerId, speakerName, waitingForGuess, phase, shuffledMonsters } = roundState
@@ -67,10 +68,16 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
   }, [currentSpeakerId])
 
   useEffect(() => {
+    setGameplayMuted(false) // new round/second chance starts with music playing
     setWagerState('idle')
     setWagerPosition(null)
     setWagerResult(null)
   }, [quoteFlipKey])
+
+  // Mute music as soon as the speaker's audio arrives (waitingForGuess = true)
+  useEffect(() => {
+    if (waitingForGuess) setGameplayMuted(true)
+  }, [waitingForGuess])
 
   // Reset hasPeeked at the start of each new round (round_ended fires, then a new round starts)
   useEffect(() => {
@@ -86,10 +93,12 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
       return
     }
     setRevealPending(true)
+    playDrumroll(800)
     setShowResult(false)
     const revealTimer = setTimeout(() => {
       setRevealPending(false)
       setShowResult(true)
+      setGameplayMuted(false)
       playSound(guessResult.correct ? 'correct' : 'wrong')
     }, 800)
     const clearTimer = setTimeout(() => {
@@ -98,6 +107,7 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
     return () => {
       clearTimeout(revealTimer)
       clearTimeout(clearTimer)
+      stopDrumroll()
     }
   }, [guessResult])
 
@@ -254,11 +264,13 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
               )}
             </div>
 
-            {replayUrl && (
+            {replayUrl ? (
               <button className="btn btn-replay" onClick={handleReplay}>
                 Listen Again
               </button>
-            )}
+            ) : waitingForGuess ? (
+              <p className="timeout-no-audio">The speaker ran out of time and didn't record a voice — the Monster Spotter is still taking a guess!</p>
+            ) : null}
 
             <div className="peek-wager-row">
             <div className="peek-section" ref={peekRef}>

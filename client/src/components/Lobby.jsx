@@ -4,7 +4,7 @@ import monsterBanner from '../assets/brand/monster-banner.jpg'
 import shuffleupigusLogo from '../assets/brand/shuffleupigus-transparent.png'
 import HowToPlay from './HowToPlay'
 
-export default function Lobby({ onCreateRoom, onJoinRoom, errorMsg }) {
+export default function Lobby({ onCreateRoom, onJoinRoom, errorMsg, onDevEmotes }) {
   const [mode, setMode] = useState(null) // null | 'create' | 'join'
   const [playerName, setPlayerName] = useState('')
   const [roomCode, setRoomCode] = useState('')
@@ -114,6 +114,10 @@ export default function Lobby({ onCreateRoom, onJoinRoom, errorMsg }) {
       </div>
 
       {showHowToPlay && <HowToPlay onClose={() => setShowHowToPlay(false)} />}
+
+      {onDevEmotes && (
+        <button className="btn-lobby-dev" onClick={onDevEmotes}>DEV</button>
+      )}
     </div>
   )
 }

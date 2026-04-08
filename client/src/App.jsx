@@ -3,6 +3,7 @@ import socket from './socket'
 import { playTrack, setDucked, setMusicMuted } from './utils/music'
 import { setSfxMuted } from './utils/sounds'
 import Lobby from './components/Lobby'
+import EmotePreview from './components/EmotePreview'
 import WaitingRoom from './components/WaitingRoom'
 import GameView from './components/GameView'
 import GauntletGame from './components/GauntletGame'
@@ -154,11 +155,12 @@ export default function App() {
 
     // ---- Classic game events ----
     socket.on('emote', ({ playerId, emoteId }) => {
-      setActiveEmotes(prev => ({ ...prev, [playerId]: emoteId }))
+      const fireKey = Date.now()
+      setActiveEmotes(prev => ({ ...prev, [playerId]: { emoteId, fireKey } }))
       setTimeout(() => {
         setActiveEmotes(prev => {
           const next = { ...prev }
-          if (next[playerId] === emoteId) delete next[playerId]
+          if (next[playerId]?.fireKey === fireKey) delete next[playerId]
           return next
         })
       }, 2500)
@@ -405,12 +407,15 @@ export default function App() {
   }
 
   let content = null
-  if (view === 'lobby') {
+  if (view === 'dev-emotes') {
+    content = <EmotePreview onClose={() => setView('lobby')} />
+  } else if (view === 'lobby') {
     content = (
       <Lobby
         onCreateRoom={handleCreateRoom}
         onJoinRoom={handleJoinRoom}
         errorMsg={errorMsg}
+        onDevEmotes={() => setView('dev-emotes')}
       />
     )
   } else if (view === 'waiting') {

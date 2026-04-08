@@ -1136,6 +1136,17 @@ body {
   z-index: 50;
 }
 
+/* Keep emoting avatar fully visible even when the row is faded (e.g. after being guessed) */
+.scoreboard-item-done .emote-active {
+  opacity: 1;
+}
+
+/* Used in-game instead of emote-active — pops above siblings without the swell */
+.emote-raised {
+  position: relative;
+  z-index: 50;
+}
+
 @keyframes emote-swell {
   0%   { transform: scale(1)   rotate(0deg); }
   20%  { transform: scale(2.5) rotate(0deg); }   /* fully swelled */
@@ -1147,6 +1158,1997 @@ body {
   65%  { transform: scale(2.5) rotate(0deg); }   /* hold ends */
   85%  { transform: scale(1)   rotate(0deg); }   /* shrunk */
   100% { transform: scale(1)   rotate(0deg); }
+}
+
+/* ===== DEV: EMOTE PREVIEW PAGE ===== */
+.emote-preview-screen {
+  min-height: 100vh;
+  background: #f7f7f7;
+  padding: 1.5rem 2rem 3rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.emote-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 900px;
+}
+
+.emote-preview-back {
+  background: none;
+  border: 2px solid #000;
+  border-radius: 6px;
+  padding: 0.3rem 0.8rem;
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.emote-preview-back:hover { background: #000; color: #fff; }
+
+.emote-preview-title {
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 1.6rem;
+  margin: 0;
+  flex: 1;
+}
+
+.emote-preview-dev-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #fff;
+  background: #e00;
+  border-radius: 4px;
+  padding: 0.2em 0.5em;
+}
+
+.emote-preview-hint {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0;
+}
+
+.emote-preview-buttons {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.emote-preview-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  background: #fff;
+  border: 2px solid #000;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.12);
+  transition: transform 0.1s, box-shadow 0.1s;
+  min-width: 70px;
+}
+.emote-preview-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 rgba(0,0,0,0.18);
+}
+.emote-preview-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.12);
+}
+
+.emote-preview-emoji { font-size: 1.6rem; line-height: 1; }
+.emote-preview-label { font-size: 0.7rem; font-weight: 600; color: #333; }
+
+.emote-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  column-gap: 2.5rem;
+  row-gap: 8rem;  /* avatars swell to 200px — rows need space above & below */
+  max-width: 680px;
+  width: 100%;
+}
+
+.emote-preview-avatar-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.emote-preview-avatar-slot .scoreboard-avatar-wrap {
+  width: 80px;
+  height: 80px;
+  border: 2.5px solid #000;
+  background: #fff;
+  overflow: hidden;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.15);
+  flex-shrink: 0;
+}
+
+/* Per-avatar image sizes: game values × 1.25 (80px ÷ 64px) — same proportions, bigger circle */
+.emote-preview-avatar-slot .scoreboard-avatar.av-a1  { width: 83px;  height: 83px;  }
+.emote-preview-avatar-slot .scoreboard-avatar.av-a2  { width: 79px;  height: 79px;  }
+.emote-preview-avatar-slot .scoreboard-avatar.av-a3  { width: 79px;  height: 79px;  }
+.emote-preview-avatar-slot .scoreboard-avatar.av-a4  { width: 86px;  height: 86px;  }
+.emote-preview-avatar-slot .scoreboard-avatar.av-a5  { width: 75px;  height: 75px;  }
+.emote-preview-avatar-slot .scoreboard-avatar.av-a6  { width: 78px;  height: 78px;  }
+.emote-preview-avatar-slot .scoreboard-avatar.av-a7  { width: 89px;  height: 89px;  }
+.emote-preview-avatar-slot .scoreboard-avatar.av-a8  { width: 85px;  height: 85px;  }
+.emote-preview-avatar-slot .scoreboard-avatar.av-a9  { width: 86px;  height: 86px;  }
+.emote-preview-avatar-slot .scoreboard-avatar.av-a10 { width: 80px;  height: 80px;  }
+.emote-preview-avatar-slot .scoreboard-avatar.av-a11 { width: 88px;  height: 88px;  }
+
+.emote-preview-avatar-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #555;
+  letter-spacing: 0.05em;
+}
+
+/* =====================================================
+   A9 (DRACULA) — EMOTE ANIMATIONS
+   ===================================================== */
+
+/*
+  The wrapper circle always uses the default emote-swell (scale up → hold → shrink).
+  Character movement targets .a9-character — the <g> wrapping all SVG paths.
+  Text overlays are SVG siblings of .a9-character: they stay fixed while character moves.
+*/
+
+/* ── Shared defaults ── */
+.a9-character {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a9-ha, .a9-star, .a9-bang, .a9-boo-text, .a9-boo-thumb, .a9-heart, .a9-think-q {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* Force emoji thumbs down to render as solid black silhouette */
+.a9-boo-thumb {
+  filter: grayscale(1) brightness(0);
+}
+
+/* ══════════════════════════════════════════
+   LAUGH — only the #head rocks; wrapper & text untouched
+   ══════════════════════════════════════════ */
+.a9-emote-laugh #head {
+  animation: a9-laugh-head 2.5s ease-in-out forwards;
+}
+@keyframes a9-laugh-head {
+  0%, 6%  { transform: rotate(0deg); }
+  27%     { transform: rotate(-22deg); }
+  36%     { transform: rotate(22deg); }
+  45%     { transform: rotate(-20deg); }
+  54%     { transform: rotate(20deg); }
+  62%     { transform: rotate(-10deg); }
+  70%     { transform: rotate(8deg); }
+  78%     { transform: rotate(0deg); }
+  100%    { transform: rotate(0deg); }
+}
+
+/* 0.45s spacing, 1.0s each — last HA fades just as wrapper shrinks */
+.a9-emote-laugh .a9-ha {
+  animation: a9-ha-pop 1.0s ease-out forwards;
+}
+.a9-emote-laugh .a9-ha-1 { animation-delay: 0.15s; }
+.a9-emote-laugh .a9-ha-2 { animation-delay: 0.6s; }
+.a9-emote-laugh .a9-ha-3 { animation-delay: 1.05s; }
+
+@keyframes a9-ha-pop {
+  0%   { opacity: 0;   transform: scale(0)    rotate(-22deg); }
+  18%  { opacity: 1;   transform: scale(1.3)  rotate(12deg); }
+  38%  { opacity: 1;   transform: scale(0.95) rotate(-6deg); }
+  55%  { opacity: 1;   transform: scale(1.05) rotate(4deg); }
+  70%  { opacity: 1;   transform: scale(1.0)  rotate(0deg); }
+  88%  { opacity: 0.4; transform: scale(1.0)  rotate(0deg); }
+  100% { opacity: 0;   transform: scale(0.9)  rotate(6deg); }
+}
+
+/* ══════════════════════════════════════════
+   CHEER — CHARACTER spins at constant speed; stars appear fixed while it spins
+   ══════════════════════════════════════════ */
+.a9-emote-cheer .a9-character {
+  animation: a9-cheer-spin 2.5s linear forwards;
+}
+@keyframes a9-cheer-spin {
+  0%   { transform: rotate(0deg); }
+  75%  { transform: rotate(1080deg); }  /* all 3 rotations done by 1.875s, before shrink */
+  100% { transform: rotate(1080deg); }  /* hold while circle shrinks */
+}
+
+/* Stars stagger across the spin duration; they're fixed in SVG space */
+.a9-emote-cheer .a9-star {
+  animation: a9-star-pop 1.0s ease-out forwards;
+}
+.a9-emote-cheer .a9-star-1 { animation-delay: 0.2s; }
+.a9-emote-cheer .a9-star-2 { animation-delay: 0.45s; }
+.a9-emote-cheer .a9-star-3 { animation-delay: 0.7s; }
+.a9-emote-cheer .a9-star-4 { animation-delay: 0.95s; }
+.a9-emote-cheer .a9-star-5 { animation-delay: 1.2s; }
+.a9-emote-cheer .a9-star-6 { animation-delay: 0.35s; }
+.a9-emote-cheer .a9-star-7 { animation-delay: 0.6s; }
+.a9-emote-cheer .a9-star-8 { animation-delay: 0.85s; }
+
+@keyframes a9-star-pop {
+  0%   { opacity: 0;   transform: scale(0)   rotate(0deg); }
+  20%  { opacity: 1;   transform: scale(1.4) rotate(45deg); }
+  55%  { opacity: 1;   transform: scale(1.0) rotate(90deg); }
+  80%  { opacity: 0.5; transform: scale(1.0) rotate(120deg); }
+  100% { opacity: 0;   transform: scale(0.6) rotate(160deg); }
+}
+
+/* ══════════════════════════════════════════
+   SHOCKED — CHARACTER does the elastic compression; text/circle stay still
+   ══════════════════════════════════════════ */
+.a9-emote-shocked .a9-character {
+  animation: a9-shocked-elastic 2.5s ease-in-out forwards;
+}
+/* Wait for wrapper swell, then: compress → boing overshoot → settle */
+@keyframes a9-shocked-elastic {
+  0%, 10% { transform: scale(1); }
+  18%     { transform: scale(0.2); }   /* COMPRESS to tiny */
+  28%     { transform: scale(1.18); }  /* BOING overshoot */
+  35%     { transform: scale(0.88); }  /* bounce under */
+  42%     { transform: scale(1.06); }  /* bounce over */
+  48%     { transform: scale(0.97); }  /* settling */
+  54%     { transform: scale(1.0); }   /* settled */
+  72%     { transform: scale(1.0); }   /* hold */
+  100%    { transform: scale(1.0); }
+}
+
+/* All ! marks slam in simultaneously at the boing moment (~28% = 0.7s) */
+.a9-emote-shocked .a9-bang {
+  transform-origin: 50% 100%;
+  animation: a9-bang-swing 2.5s linear forwards;
+}
+
+@keyframes a9-bang-swing {
+  0%, 25% { opacity: 0; transform: rotate(0deg); }
+  28%     { opacity: 1; transform: rotate(0deg); }
+  34%     { opacity: 1; transform: rotate(32deg); }
+  42%     { opacity: 1; transform: rotate(-24deg); }
+  50%     { opacity: 1; transform: rotate(16deg); }
+  57%     { opacity: 1; transform: rotate(-9deg); }
+  63%     { opacity: 1; transform: rotate(5deg); }
+  69%     { opacity: 1; transform: rotate(-2deg); }
+  76%     { opacity: 1; transform: rotate(0deg); }
+  88%     { opacity: 1; transform: rotate(0deg); }
+  100%    { opacity: 0; transform: rotate(0deg); }
+}
+
+/* ══════════════════════════════════════════
+   BOO — CHARACTER flips 180° early and holds; BOO! + thumbs stay upright
+   ══════════════════════════════════════════ */
+.a9-emote-boo .a9-character {
+  animation: a9-boo-flip 2.5s ease-in-out forwards;
+}
+@keyframes a9-boo-flip {
+  0%, 10% { transform: rotate(0deg); }
+  20%     { transform: rotate(180deg); }   /* flips at 0.5s */
+  82%     { transform: rotate(180deg); }   /* holds upside-down until 2.05s */
+  100%    { transform: rotate(180deg); }
+}
+
+/* Thumbs appear after flip settles (~20% = 0.5s) */
+.a9-emote-boo .a9-boo-thumb {
+  animation: a9-boo-appear 2.5s ease-out forwards;
+}
+@keyframes a9-boo-appear {
+  0%, 24% { opacity: 0; transform: scale(0.5); }
+  36%     { opacity: 1; transform: scale(1.1); }
+  46%     { opacity: 1; transform: scale(1.0); }
+  78%     { opacity: 1; transform: scale(1.0); }
+  100%    { opacity: 0; transform: scale(0.8); }
+}
+.a9-emote-boo .a9-boo-text {
+  animation: a9-boo-scroll 2.5s linear 0.3s forwards;
+}
+@keyframes a9-boo-scroll {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 1; transform: translateX(-350px); }
+}
+
+/* ══════════════════════════════════════════
+   LOVE — default swell, no head movement; hearts float upward
+   ══════════════════════════════════════════ */
+.a9-emote-love .a9-heart {
+  animation: a9-heart-rise 1.2s ease-out forwards;
+}
+.a9-emote-love .a9-heart-1 { animation-delay: 0.2s; }
+.a9-emote-love .a9-heart-2 { animation-delay: 0.7s; }
+.a9-emote-love .a9-heart-3 { animation-delay: 1.2s; }
+
+@keyframes a9-heart-rise {
+  0%   { opacity: 0;   transform: translateY(0)     scale(0.6); }
+  18%  { opacity: 1;   transform: translateY(-8px)  scale(1.2); }
+  50%  { opacity: 0.9; transform: translateY(-22px) scale(1.0); }
+  80%  { opacity: 0.3; transform: translateY(-35px) scale(0.8); }
+  100% { opacity: 0;   transform: translateY(-44px) scale(0.5); }
+}
+
+/* ══════════════════════════════════════════
+   THINK — CHARACTER squishes early, holds low, springs back; three ?s stagger in
+   ══════════════════════════════════════════ */
+.a9-emote-think .a9-character {
+  transform-origin: 50% 100%;   /* squish from top; feet stay put */
+  animation: a9-think-squish 2.5s ease-in-out forwards;
+}
+@keyframes a9-think-squish {
+  0%   { transform: scaleY(1.0); }
+  13%  { transform: scaleY(0.5); }   /* squished at 0.325s — before circle is full size */
+  68%  { transform: scaleY(0.5); }   /* hold squished until 1.7s */
+  78%  { transform: scaleY(1.05); }  /* slight overshoot on spring-back */
+  86%  { transform: scaleY(0.97); }
+  92%  { transform: scaleY(1.0); }   /* settled */
+  100% { transform: scaleY(1.0); }
+}
+
+.a9-emote-think .a9-think-q {
+  animation: a9-q-pulse 2.5s ease-out forwards;
+}
+.a9-emote-think .a9-think-q-1 { animation-delay: 0s; }
+.a9-emote-think .a9-think-q-2 { animation-delay: 0.4s; }
+.a9-emote-think .a9-think-q-3 { animation-delay: 0.8s; }
+
+@keyframes a9-q-pulse {
+  0%   { opacity: 0;   transform: scale(0); }
+  16%  { opacity: 1;   transform: scale(1.3); }
+  26%  { opacity: 1;   transform: scale(0.9); }
+  38%  { opacity: 1;   transform: scale(1.05); }
+  54%  { opacity: 1;   transform: scale(1.15); }
+  68%  { opacity: 1;   transform: scale(0.95); }
+  80%  { opacity: 1;   transform: scale(1.0); }
+  92%  { opacity: 0.4; transform: scale(1.0); }
+  100% { opacity: 0;   transform: scale(0.8); }
+}
+
+/* =====================================================
+   A4 — EMOTE ANIMATIONS
+   ===================================================== */
+
+/*
+  The wrapper circle always uses the default emote-swell (scale up → hold → shrink).
+  Character movement targets .a4-character — the <g> wrapping all SVG paths.
+  Text overlays are SVG siblings of .a4-character: they stay fixed while character moves.
+*/
+
+/* ── Shared defaults ── */
+.a4-character {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a4-ha, .a4-star, .a4-bang, .a4-boo-text, .a4-boo-thumb, .a4-heart, .a4-think-q {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* Force emoji thumbs down to render as solid black silhouette */
+.a4-boo-thumb {
+  filter: grayscale(1) brightness(0);
+}
+
+/* ══════════════════════════════════════════
+   LAUGH — only the #head rocks; wrapper & text untouched
+   ══════════════════════════════════════════ */
+.a4-emote-laugh .a4-character {
+  transform-box: fill-box;
+  transform-origin: 50% 90%;
+  animation: a4-laugh-head 2.5s ease-in-out forwards;
+}
+@keyframes a4-laugh-head {
+  0%, 6%  { transform: rotate(0deg); }
+  27%     { transform: rotate(-22deg); }
+  36%     { transform: rotate(22deg); }
+  45%     { transform: rotate(-20deg); }
+  54%     { transform: rotate(20deg); }
+  62%     { transform: rotate(-10deg); }
+  70%     { transform: rotate(8deg); }
+  78%     { transform: rotate(0deg); }
+  100%    { transform: rotate(0deg); }
+}
+
+/* 0.45s spacing, 1.0s each — last HA fades just as wrapper shrinks */
+.a4-emote-laugh .a4-ha {
+  animation: a4-ha-pop 1.0s ease-out forwards;
+}
+.a4-emote-laugh .a4-ha-1 { animation-delay: 0.15s; }
+.a4-emote-laugh .a4-ha-2 { animation-delay: 0.6s; }
+.a4-emote-laugh .a4-ha-3 { animation-delay: 1.05s; }
+
+@keyframes a4-ha-pop {
+  0%   { opacity: 0;   transform: scale(0)    rotate(-22deg); }
+  18%  { opacity: 1;   transform: scale(1.3)  rotate(12deg); }
+  38%  { opacity: 1;   transform: scale(0.95) rotate(-6deg); }
+  55%  { opacity: 1;   transform: scale(1.05) rotate(4deg); }
+  70%  { opacity: 1;   transform: scale(1.0)  rotate(0deg); }
+  88%  { opacity: 0.4; transform: scale(1.0)  rotate(0deg); }
+  100% { opacity: 0;   transform: scale(0.9)  rotate(6deg); }
+}
+
+/* ══════════════════════════════════════════
+   CHEER — CHARACTER spins at constant speed; stars appear fixed while it spins
+   ══════════════════════════════════════════ */
+.a4-emote-cheer .a4-character {
+  animation: a4-cheer-spin 2.5s linear forwards;
+}
+@keyframes a4-cheer-spin {
+  0%   { transform: rotate(0deg); }
+  75%  { transform: rotate(1080deg); }  /* all 3 rotations done by 1.875s, before shrink */
+  100% { transform: rotate(1080deg); }  /* hold while circle shrinks */
+}
+
+/* Stars stagger across the spin duration; they're fixed in SVG space */
+.a4-emote-cheer .a4-star {
+  animation: a4-star-pop 1.0s ease-out forwards;
+}
+.a4-emote-cheer .a4-star-1 { animation-delay: 0.2s; }
+.a4-emote-cheer .a4-star-2 { animation-delay: 0.45s; }
+.a4-emote-cheer .a4-star-3 { animation-delay: 0.7s; }
+.a4-emote-cheer .a4-star-4 { animation-delay: 0.95s; }
+.a4-emote-cheer .a4-star-5 { animation-delay: 1.2s; }
+.a4-emote-cheer .a4-star-6 { animation-delay: 0.35s; }
+.a4-emote-cheer .a4-star-7 { animation-delay: 0.6s; }
+.a4-emote-cheer .a4-star-8 { animation-delay: 0.85s; }
+
+@keyframes a4-star-pop {
+  0%   { opacity: 0;   transform: scale(0)   rotate(0deg); }
+  20%  { opacity: 1;   transform: scale(1.4) rotate(45deg); }
+  55%  { opacity: 1;   transform: scale(1.0) rotate(90deg); }
+  80%  { opacity: 0.5; transform: scale(1.0) rotate(120deg); }
+  100% { opacity: 0;   transform: scale(0.6) rotate(160deg); }
+}
+
+/* ══════════════════════════════════════════
+   SHOCKED — CHARACTER does the elastic compression; text/circle stay still
+   ══════════════════════════════════════════ */
+.a4-emote-shocked .a4-character {
+  animation: a4-shocked-elastic 2.5s ease-in-out forwards;
+}
+/* Wait for wrapper swell, then: compress → boing overshoot → settle */
+@keyframes a4-shocked-elastic {
+  0%, 10% { transform: scale(1); }
+  18%     { transform: scale(0.2); }   /* COMPRESS to tiny */
+  28%     { transform: scale(1.18); }  /* BOING overshoot */
+  35%     { transform: scale(0.88); }  /* bounce under */
+  42%     { transform: scale(1.06); }  /* bounce over */
+  48%     { transform: scale(0.97); }  /* settling */
+  54%     { transform: scale(1.0); }   /* settled */
+  72%     { transform: scale(1.0); }   /* hold */
+  100%    { transform: scale(1.0); }
+}
+
+/* All ! marks slam in simultaneously at the boing moment (~28% = 0.7s) */
+.a4-emote-shocked .a4-bang {
+  transform-origin: 50% 100%;
+  animation: a4-bang-swing 2.5s linear forwards;
+}
+
+@keyframes a4-bang-swing {
+  0%, 25% { opacity: 0; transform: rotate(0deg); }
+  28%     { opacity: 1; transform: rotate(0deg); }
+  34%     { opacity: 1; transform: rotate(32deg); }
+  42%     { opacity: 1; transform: rotate(-24deg); }
+  50%     { opacity: 1; transform: rotate(16deg); }
+  57%     { opacity: 1; transform: rotate(-9deg); }
+  63%     { opacity: 1; transform: rotate(5deg); }
+  69%     { opacity: 1; transform: rotate(-2deg); }
+  76%     { opacity: 1; transform: rotate(0deg); }
+  88%     { opacity: 1; transform: rotate(0deg); }
+  100%    { opacity: 0; transform: rotate(0deg); }
+}
+
+/* ══════════════════════════════════════════
+   BOO — CHARACTER flips 180° early and holds; BOO! + thumbs stay upright
+   ══════════════════════════════════════════ */
+.a4-emote-boo .a4-character {
+  animation: a4-boo-flip 2.5s ease-in-out forwards;
+}
+@keyframes a4-boo-flip {
+  0%, 10% { transform: rotate(0deg); }
+  20%     { transform: rotate(180deg); }   /* flips at 0.5s */
+  82%     { transform: rotate(180deg); }   /* holds upside-down until 2.05s */
+  100%    { transform: rotate(180deg); }
+}
+
+/* Thumbs appear after flip settles (~20% = 0.5s) */
+.a4-emote-boo .a4-boo-thumb {
+  animation: a4-boo-appear 2.5s ease-out forwards;
+}
+@keyframes a4-boo-appear {
+  0%, 24% { opacity: 0; transform: scale(0.5); }
+  36%     { opacity: 1; transform: scale(1.1); }
+  46%     { opacity: 1; transform: scale(1.0); }
+  78%     { opacity: 1; transform: scale(1.0); }
+  100%    { opacity: 0; transform: scale(0.8); }
+}
+.a4-emote-boo .a4-boo-text {
+  animation: a4-boo-scroll 2.5s linear 0.3s forwards;
+}
+@keyframes a4-boo-scroll {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 1; transform: translateX(-250px); }
+}
+
+/* ══════════════════════════════════════════
+   LOVE — default swell, no head movement; hearts float upward
+   ══════════════════════════════════════════ */
+.a4-emote-love .a4-heart {
+  animation: a4-heart-rise 1.2s ease-out forwards;
+}
+.a4-emote-love .a4-heart-1 { animation-delay: 0.2s; }
+.a4-emote-love .a4-heart-2 { animation-delay: 0.7s; }
+.a4-emote-love .a4-heart-3 { animation-delay: 1.2s; }
+
+@keyframes a4-heart-rise {
+  0%   { opacity: 0;   transform: translateY(0)     scale(0.6); }
+  18%  { opacity: 1;   transform: translateY(-8px)  scale(1.2); }
+  50%  { opacity: 0.9; transform: translateY(-22px) scale(1.0); }
+  80%  { opacity: 0.3; transform: translateY(-35px) scale(0.8); }
+  100% { opacity: 0;   transform: translateY(-44px) scale(0.5); }
+}
+
+/* ══════════════════════════════════════════
+   THINK — CHARACTER squishes early, holds low, springs back; three ?s stagger in
+   ══════════════════════════════════════════ */
+.a4-emote-think .a4-character {
+  transform-origin: 50% 100%;   /* squish from top; feet stay put */
+  animation: a4-think-squish 2.5s ease-in-out forwards;
+}
+@keyframes a4-think-squish {
+  0%   { transform: scaleY(1.0); }
+  13%  { transform: scaleY(0.5); }   /* squished at 0.325s — before circle is full size */
+  68%  { transform: scaleY(0.5); }   /* hold squished until 1.7s */
+  78%  { transform: scaleY(1.05); }  /* slight overshoot on spring-back */
+  86%  { transform: scaleY(0.97); }
+  92%  { transform: scaleY(1.0); }   /* settled */
+  100% { transform: scaleY(1.0); }
+}
+
+.a4-emote-think .a4-think-q {
+  animation: a4-q-pulse 2.5s ease-out forwards;
+}
+.a4-emote-think .a4-think-q-1 { animation-delay: 0s; }
+.a4-emote-think .a4-think-q-2 { animation-delay: 0.4s; }
+.a4-emote-think .a4-think-q-3 { animation-delay: 0.8s; }
+
+@keyframes a4-q-pulse {
+  0%   { opacity: 0;   transform: scale(0); }
+  16%  { opacity: 1;   transform: scale(1.3); }
+  26%  { opacity: 1;   transform: scale(0.9); }
+  38%  { opacity: 1;   transform: scale(1.05); }
+  54%  { opacity: 1;   transform: scale(1.15); }
+  68%  { opacity: 1;   transform: scale(0.95); }
+  80%  { opacity: 1;   transform: scale(1.0); }
+  92%  { opacity: 0.4; transform: scale(1.0); }
+  100% { opacity: 0;   transform: scale(0.8); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   AVATAR A1 EMOTE ANIMATIONS
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Shared defaults ── */
+.a1-character {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a1-ha, .a1-star, .a1-bang, .a1-boo-text, .a1-boo-thumb, .a1-heart, .a1-think-q {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a1-boo-thumb {
+  filter: grayscale(1) brightness(0);
+}
+
+.a1-emote-laugh #head {
+  animation: a1-laugh-head 2.5s ease-in-out forwards;
+}
+@keyframes a1-laugh-head {
+  0%, 6%  { transform: rotate(0deg); }
+  27%     { transform: rotate(-22deg); }
+  36%     { transform: rotate(22deg); }
+  45%     { transform: rotate(-20deg); }
+  54%     { transform: rotate(20deg); }
+  62%     { transform: rotate(-10deg); }
+  70%     { transform: rotate(8deg); }
+  78%     { transform: rotate(0deg); }
+  100%    { transform: rotate(0deg); }
+}
+.a1-emote-laugh .a1-ha {
+  animation: a1-ha-pop 1.0s ease-out forwards;
+}
+.a1-emote-laugh .a1-ha-1 { animation-delay: 0.15s; }
+.a1-emote-laugh .a1-ha-2 { animation-delay: 0.6s; }
+.a1-emote-laugh .a1-ha-3 { animation-delay: 1.05s; }
+@keyframes a1-ha-pop {
+  0%   { opacity: 0;   transform: scale(0)    rotate(-22deg); }
+  18%  { opacity: 1;   transform: scale(1.3)  rotate(12deg); }
+  38%  { opacity: 1;   transform: scale(0.95) rotate(-6deg); }
+  55%  { opacity: 1;   transform: scale(1.05) rotate(4deg); }
+  70%  { opacity: 1;   transform: scale(1.0)  rotate(0deg); }
+  88%  { opacity: 0.4; transform: scale(1.0)  rotate(0deg); }
+  100% { opacity: 0;   transform: scale(0.9)  rotate(6deg); }
+}
+
+.a1-emote-cheer .a1-character {
+  animation: a1-cheer-spin 2.5s linear forwards;
+}
+@keyframes a1-cheer-spin {
+  0%   { transform: rotate(0deg); }
+  75%  { transform: rotate(1080deg); }
+  100% { transform: rotate(1080deg); }
+}
+.a1-emote-cheer .a1-star {
+  animation: a1-star-pop 1.0s ease-out forwards;
+}
+.a1-emote-cheer .a1-star-1 { animation-delay: 0.2s; }
+.a1-emote-cheer .a1-star-2 { animation-delay: 0.45s; }
+.a1-emote-cheer .a1-star-3 { animation-delay: 0.7s; }
+.a1-emote-cheer .a1-star-4 { animation-delay: 0.95s; }
+.a1-emote-cheer .a1-star-5 { animation-delay: 1.2s; }
+.a1-emote-cheer .a1-star-6 { animation-delay: 0.35s; }
+.a1-emote-cheer .a1-star-7 { animation-delay: 0.6s; }
+.a1-emote-cheer .a1-star-8 { animation-delay: 0.85s; }
+@keyframes a1-star-pop {
+  0%   { opacity: 0;   transform: scale(0)   rotate(0deg); }
+  20%  { opacity: 1;   transform: scale(1.4) rotate(45deg); }
+  55%  { opacity: 1;   transform: scale(1.0) rotate(90deg); }
+  80%  { opacity: 0.5; transform: scale(1.0) rotate(120deg); }
+  100% { opacity: 0;   transform: scale(0.6) rotate(160deg); }
+}
+
+.a1-emote-shocked .a1-character {
+  animation: a1-shocked-elastic 2.5s ease-in-out forwards;
+}
+@keyframes a1-shocked-elastic {
+  0%, 10% { transform: scale(1); }
+  18%     { transform: scale(0.2); }
+  28%     { transform: scale(1.18); }
+  35%     { transform: scale(0.88); }
+  42%     { transform: scale(1.06); }
+  48%     { transform: scale(0.97); }
+  54%     { transform: scale(1.0); }
+  72%     { transform: scale(1.0); }
+  100%    { transform: scale(1.0); }
+}
+.a1-emote-shocked .a1-bang {
+  transform-origin: 50% 100%;
+  animation: a1-bang-swing 2.5s linear forwards;
+}
+@keyframes a1-bang-swing {
+  0%, 25% { opacity: 0; transform: rotate(0deg); }
+  28%     { opacity: 1; transform: rotate(0deg); }
+  34%     { opacity: 1; transform: rotate(32deg); }
+  42%     { opacity: 1; transform: rotate(-24deg); }
+  50%     { opacity: 1; transform: rotate(16deg); }
+  57%     { opacity: 1; transform: rotate(-9deg); }
+  63%     { opacity: 1; transform: rotate(5deg); }
+  69%     { opacity: 1; transform: rotate(-2deg); }
+  76%     { opacity: 1; transform: rotate(0deg); }
+  88%     { opacity: 1; transform: rotate(0deg); }
+  100%    { opacity: 0; transform: rotate(0deg); }
+}
+
+.a1-emote-boo .a1-character {
+  animation: a1-boo-flip 2.5s ease-in-out forwards;
+}
+@keyframes a1-boo-flip {
+  0%, 10% { transform: rotate(0deg); }
+  20%     { transform: rotate(180deg); }
+  82%     { transform: rotate(180deg); }
+  100%    { transform: rotate(180deg); }
+}
+.a1-emote-boo .a1-boo-thumb {
+  animation: a1-boo-appear 2.5s ease-out forwards;
+}
+@keyframes a1-boo-appear {
+  0%, 24% { opacity: 0; transform: scale(0.5); }
+  36%     { opacity: 1; transform: scale(1.1); }
+  46%     { opacity: 1; transform: scale(1.0); }
+  78%     { opacity: 1; transform: scale(1.0); }
+  100%    { opacity: 0; transform: scale(0.8); }
+}
+.a1-emote-boo .a1-boo-text {
+  animation: a1-boo-scroll 2.5s linear 0.3s forwards;
+}
+@keyframes a1-boo-scroll {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 1; transform: translateX(-275px); }
+}
+
+.a1-emote-love .a1-heart {
+  animation: a1-heart-rise 1.2s ease-out forwards;
+}
+.a1-emote-love .a1-heart-1 { animation-delay: 0.2s; }
+.a1-emote-love .a1-heart-2 { animation-delay: 0.7s; }
+.a1-emote-love .a1-heart-3 { animation-delay: 1.2s; }
+@keyframes a1-heart-rise {
+  0%   { opacity: 0;   transform: translateY(0)     scale(0.6); }
+  18%  { opacity: 1;   transform: translateY(-8px)  scale(1.2); }
+  50%  { opacity: 0.9; transform: translateY(-22px) scale(1.0); }
+  80%  { opacity: 0.3; transform: translateY(-35px) scale(0.8); }
+  100% { opacity: 0;   transform: translateY(-44px) scale(0.5); }
+}
+
+.a1-emote-think .a1-character {
+  transform-origin: 50% 100%;
+  animation: a1-think-squish 2.5s ease-in-out forwards;
+}
+@keyframes a1-think-squish {
+  0%   { transform: scaleY(1.0); }
+  13%  { transform: scaleY(0.5); }
+  68%  { transform: scaleY(0.5); }
+  78%  { transform: scaleY(1.05); }
+  86%  { transform: scaleY(0.97); }
+  92%  { transform: scaleY(1.0); }
+  100% { transform: scaleY(1.0); }
+}
+.a1-emote-think .a1-think-q {
+  animation: a1-q-pulse 2.5s ease-out forwards;
+}
+.a1-emote-think .a1-think-q-1 { animation-delay: 0s; }
+.a1-emote-think .a1-think-q-2 { animation-delay: 0.4s; }
+.a1-emote-think .a1-think-q-3 { animation-delay: 0.8s; }
+@keyframes a1-q-pulse {
+  0%   { opacity: 0;   transform: scale(0); }
+  16%  { opacity: 1;   transform: scale(1.3); }
+  26%  { opacity: 1;   transform: scale(0.9); }
+  38%  { opacity: 1;   transform: scale(1.05); }
+  54%  { opacity: 1;   transform: scale(1.15); }
+  68%  { opacity: 1;   transform: scale(0.95); }
+  80%  { opacity: 1;   transform: scale(1.0); }
+  92%  { opacity: 0.4; transform: scale(1.0); }
+  100% { opacity: 0;   transform: scale(0.8); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   AVATAR A2 EMOTE ANIMATIONS
+   ══════════════════════════════════════════════════════════ */
+
+.a2-character {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a2-ha, .a2-star, .a2-bang, .a2-boo-text, .a2-boo-thumb, .a2-heart, .a2-think-q {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a2-boo-thumb {
+  filter: grayscale(1) brightness(0);
+}
+
+.a2-emote-laugh #head {
+  animation: a2-laugh-head 2.5s ease-in-out forwards;
+}
+@keyframes a2-laugh-head {
+  0%, 6%  { transform: rotate(0deg); }
+  27%     { transform: rotate(-22deg); }
+  36%     { transform: rotate(22deg); }
+  45%     { transform: rotate(-20deg); }
+  54%     { transform: rotate(20deg); }
+  62%     { transform: rotate(-10deg); }
+  70%     { transform: rotate(8deg); }
+  78%     { transform: rotate(0deg); }
+  100%    { transform: rotate(0deg); }
+}
+.a2-emote-laugh .a2-ha {
+  animation: a2-ha-pop 1.0s ease-out forwards;
+}
+.a2-emote-laugh .a2-ha-1 { animation-delay: 0.15s; }
+.a2-emote-laugh .a2-ha-2 { animation-delay: 0.6s; }
+.a2-emote-laugh .a2-ha-3 { animation-delay: 1.05s; }
+@keyframes a2-ha-pop {
+  0%   { opacity: 0;   transform: scale(0)    rotate(-22deg); }
+  18%  { opacity: 1;   transform: scale(1.3)  rotate(12deg); }
+  38%  { opacity: 1;   transform: scale(0.95) rotate(-6deg); }
+  55%  { opacity: 1;   transform: scale(1.05) rotate(4deg); }
+  70%  { opacity: 1;   transform: scale(1.0)  rotate(0deg); }
+  88%  { opacity: 0.4; transform: scale(1.0)  rotate(0deg); }
+  100% { opacity: 0;   transform: scale(0.9)  rotate(6deg); }
+}
+
+.a2-emote-cheer .a2-character {
+  animation: a2-cheer-spin 2.5s linear forwards;
+}
+@keyframes a2-cheer-spin {
+  0%   { transform: rotate(0deg); }
+  75%  { transform: rotate(1080deg); }
+  100% { transform: rotate(1080deg); }
+}
+.a2-emote-cheer .a2-star {
+  animation: a2-star-pop 1.0s ease-out forwards;
+}
+.a2-emote-cheer .a2-star-1 { animation-delay: 0.2s; }
+.a2-emote-cheer .a2-star-2 { animation-delay: 0.45s; }
+.a2-emote-cheer .a2-star-3 { animation-delay: 0.7s; }
+.a2-emote-cheer .a2-star-4 { animation-delay: 0.95s; }
+.a2-emote-cheer .a2-star-5 { animation-delay: 1.2s; }
+.a2-emote-cheer .a2-star-6 { animation-delay: 0.35s; }
+.a2-emote-cheer .a2-star-7 { animation-delay: 0.6s; }
+.a2-emote-cheer .a2-star-8 { animation-delay: 0.85s; }
+@keyframes a2-star-pop {
+  0%   { opacity: 0;   transform: scale(0)   rotate(0deg); }
+  20%  { opacity: 1;   transform: scale(1.4) rotate(45deg); }
+  55%  { opacity: 1;   transform: scale(1.0) rotate(90deg); }
+  80%  { opacity: 0.5; transform: scale(1.0) rotate(120deg); }
+  100% { opacity: 0;   transform: scale(0.6) rotate(160deg); }
+}
+
+.a2-emote-shocked .a2-character {
+  animation: a2-shocked-elastic 2.5s ease-in-out forwards;
+}
+@keyframes a2-shocked-elastic {
+  0%, 10% { transform: scale(1); }
+  18%     { transform: scale(0.2); }
+  28%     { transform: scale(1.18); }
+  35%     { transform: scale(0.88); }
+  42%     { transform: scale(1.06); }
+  48%     { transform: scale(0.97); }
+  54%     { transform: scale(1.0); }
+  72%     { transform: scale(1.0); }
+  100%    { transform: scale(1.0); }
+}
+.a2-emote-shocked .a2-bang {
+  transform-origin: 50% 100%;
+  animation: a2-bang-swing 2.5s linear forwards;
+}
+@keyframes a2-bang-swing {
+  0%, 25% { opacity: 0; transform: rotate(0deg); }
+  28%     { opacity: 1; transform: rotate(0deg); }
+  34%     { opacity: 1; transform: rotate(32deg); }
+  42%     { opacity: 1; transform: rotate(-24deg); }
+  50%     { opacity: 1; transform: rotate(16deg); }
+  57%     { opacity: 1; transform: rotate(-9deg); }
+  63%     { opacity: 1; transform: rotate(5deg); }
+  69%     { opacity: 1; transform: rotate(-2deg); }
+  76%     { opacity: 1; transform: rotate(0deg); }
+  88%     { opacity: 1; transform: rotate(0deg); }
+  100%    { opacity: 0; transform: rotate(0deg); }
+}
+
+.a2-emote-boo .a2-character {
+  animation: a2-boo-flip 2.5s ease-in-out forwards;
+}
+@keyframes a2-boo-flip {
+  0%, 10% { transform: rotate(0deg); }
+  20%     { transform: rotate(180deg); }
+  82%     { transform: rotate(180deg); }
+  100%    { transform: rotate(180deg); }
+}
+.a2-emote-boo .a2-boo-thumb {
+  animation: a2-boo-appear 2.5s ease-out forwards;
+}
+@keyframes a2-boo-appear {
+  0%, 24% { opacity: 0; transform: scale(0.5); }
+  36%     { opacity: 1; transform: scale(1.1); }
+  46%     { opacity: 1; transform: scale(1.0); }
+  78%     { opacity: 1; transform: scale(1.0); }
+  100%    { opacity: 0; transform: scale(0.8); }
+}
+.a2-emote-boo .a2-boo-text {
+  animation: a2-boo-scroll 2.5s linear 0.3s forwards;
+}
+@keyframes a2-boo-scroll {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 1; transform: translateX(-200px); }
+}
+
+.a2-emote-love .a2-heart {
+  animation: a2-heart-rise 1.2s ease-out forwards;
+}
+.a2-emote-love .a2-heart-1 { animation-delay: 0.2s; }
+.a2-emote-love .a2-heart-2 { animation-delay: 0.7s; }
+.a2-emote-love .a2-heart-3 { animation-delay: 1.2s; }
+@keyframes a2-heart-rise {
+  0%   { opacity: 0;   transform: translateY(0)     scale(0.6); }
+  18%  { opacity: 1;   transform: translateY(-8px)  scale(1.2); }
+  50%  { opacity: 0.9; transform: translateY(-22px) scale(1.0); }
+  80%  { opacity: 0.3; transform: translateY(-35px) scale(0.8); }
+  100% { opacity: 0;   transform: translateY(-44px) scale(0.5); }
+}
+
+.a2-emote-think .a2-character {
+  transform-origin: 50% 100%;
+  animation: a2-think-squish 2.5s ease-in-out forwards;
+}
+@keyframes a2-think-squish {
+  0%   { transform: scaleY(1.0); }
+  13%  { transform: scaleY(0.5); }
+  68%  { transform: scaleY(0.5); }
+  78%  { transform: scaleY(1.05); }
+  86%  { transform: scaleY(0.97); }
+  92%  { transform: scaleY(1.0); }
+  100% { transform: scaleY(1.0); }
+}
+.a2-emote-think .a2-think-q {
+  animation: a2-q-pulse 2.5s ease-out forwards;
+}
+.a2-emote-think .a2-think-q-1 { animation-delay: 0s; }
+.a2-emote-think .a2-think-q-2 { animation-delay: 0.4s; }
+.a2-emote-think .a2-think-q-3 { animation-delay: 0.8s; }
+@keyframes a2-q-pulse {
+  0%   { opacity: 0;   transform: scale(0); }
+  16%  { opacity: 1;   transform: scale(1.3); }
+  26%  { opacity: 1;   transform: scale(0.9); }
+  38%  { opacity: 1;   transform: scale(1.05); }
+  54%  { opacity: 1;   transform: scale(1.15); }
+  68%  { opacity: 1;   transform: scale(0.95); }
+  80%  { opacity: 1;   transform: scale(1.0); }
+  92%  { opacity: 0.4; transform: scale(1.0); }
+  100% { opacity: 0;   transform: scale(0.8); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   AVATAR A3 EMOTE ANIMATIONS
+   ══════════════════════════════════════════════════════════ */
+
+.a3-character {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a3-ha, .a3-star, .a3-bang, .a3-boo-text, .a3-boo-thumb, .a3-heart, .a3-think-q {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a3-boo-thumb {
+  filter: grayscale(1) brightness(0);
+}
+
+.a3-emote-laugh #head {
+  animation: a3-laugh-head 2.5s ease-in-out forwards;
+}
+@keyframes a3-laugh-head {
+  0%, 6%  { transform: rotate(0deg); }
+  27%     { transform: rotate(-22deg); }
+  36%     { transform: rotate(22deg); }
+  45%     { transform: rotate(-20deg); }
+  54%     { transform: rotate(20deg); }
+  62%     { transform: rotate(-10deg); }
+  70%     { transform: rotate(8deg); }
+  78%     { transform: rotate(0deg); }
+  100%    { transform: rotate(0deg); }
+}
+.a3-emote-laugh .a3-ha {
+  animation: a3-ha-pop 1.0s ease-out forwards;
+}
+.a3-emote-laugh .a3-ha-1 { animation-delay: 0.15s; }
+.a3-emote-laugh .a3-ha-2 { animation-delay: 0.6s; }
+.a3-emote-laugh .a3-ha-3 { animation-delay: 1.05s; }
+@keyframes a3-ha-pop {
+  0%   { opacity: 0;   transform: scale(0)    rotate(-22deg); }
+  18%  { opacity: 1;   transform: scale(1.3)  rotate(12deg); }
+  38%  { opacity: 1;   transform: scale(0.95) rotate(-6deg); }
+  55%  { opacity: 1;   transform: scale(1.05) rotate(4deg); }
+  70%  { opacity: 1;   transform: scale(1.0)  rotate(0deg); }
+  88%  { opacity: 0.4; transform: scale(1.0)  rotate(0deg); }
+  100% { opacity: 0;   transform: scale(0.9)  rotate(6deg); }
+}
+
+.a3-emote-cheer .a3-character {
+  animation: a3-cheer-spin 2.5s linear forwards;
+}
+@keyframes a3-cheer-spin {
+  0%   { transform: rotate(0deg); }
+  75%  { transform: rotate(1080deg); }
+  100% { transform: rotate(1080deg); }
+}
+.a3-emote-cheer .a3-star {
+  animation: a3-star-pop 1.0s ease-out forwards;
+}
+.a3-emote-cheer .a3-star-1 { animation-delay: 0.2s; }
+.a3-emote-cheer .a3-star-2 { animation-delay: 0.45s; }
+.a3-emote-cheer .a3-star-3 { animation-delay: 0.7s; }
+.a3-emote-cheer .a3-star-4 { animation-delay: 0.95s; }
+.a3-emote-cheer .a3-star-5 { animation-delay: 1.2s; }
+.a3-emote-cheer .a3-star-6 { animation-delay: 0.35s; }
+.a3-emote-cheer .a3-star-7 { animation-delay: 0.6s; }
+.a3-emote-cheer .a3-star-8 { animation-delay: 0.85s; }
+@keyframes a3-star-pop {
+  0%   { opacity: 0;   transform: scale(0)   rotate(0deg); }
+  20%  { opacity: 1;   transform: scale(1.4) rotate(45deg); }
+  55%  { opacity: 1;   transform: scale(1.0) rotate(90deg); }
+  80%  { opacity: 0.5; transform: scale(1.0) rotate(120deg); }
+  100% { opacity: 0;   transform: scale(0.6) rotate(160deg); }
+}
+
+.a3-emote-shocked .a3-character {
+  animation: a3-shocked-elastic 2.5s ease-in-out forwards;
+}
+@keyframes a3-shocked-elastic {
+  0%, 10% { transform: scale(1); }
+  18%     { transform: scale(0.2); }
+  28%     { transform: scale(1.18); }
+  35%     { transform: scale(0.88); }
+  42%     { transform: scale(1.06); }
+  48%     { transform: scale(0.97); }
+  54%     { transform: scale(1.0); }
+  72%     { transform: scale(1.0); }
+  100%    { transform: scale(1.0); }
+}
+.a3-emote-shocked .a3-bang {
+  transform-origin: 50% 100%;
+  animation: a3-bang-swing 2.5s linear forwards;
+}
+@keyframes a3-bang-swing {
+  0%, 25% { opacity: 0; transform: rotate(0deg); }
+  28%     { opacity: 1; transform: rotate(0deg); }
+  34%     { opacity: 1; transform: rotate(32deg); }
+  42%     { opacity: 1; transform: rotate(-24deg); }
+  50%     { opacity: 1; transform: rotate(16deg); }
+  57%     { opacity: 1; transform: rotate(-9deg); }
+  63%     { opacity: 1; transform: rotate(5deg); }
+  69%     { opacity: 1; transform: rotate(-2deg); }
+  76%     { opacity: 1; transform: rotate(0deg); }
+  88%     { opacity: 1; transform: rotate(0deg); }
+  100%    { opacity: 0; transform: rotate(0deg); }
+}
+
+.a3-emote-boo .a3-character {
+  animation: a3-boo-flip 2.5s ease-in-out forwards;
+}
+@keyframes a3-boo-flip {
+  0%, 10% { transform: rotate(0deg); }
+  20%     { transform: rotate(180deg); }
+  82%     { transform: rotate(180deg); }
+  100%    { transform: rotate(180deg); }
+}
+.a3-emote-boo .a3-boo-thumb {
+  animation: a3-boo-appear 2.5s ease-out forwards;
+}
+@keyframes a3-boo-appear {
+  0%, 24% { opacity: 0; transform: scale(0.5); }
+  36%     { opacity: 1; transform: scale(1.1); }
+  46%     { opacity: 1; transform: scale(1.0); }
+  78%     { opacity: 1; transform: scale(1.0); }
+  100%    { opacity: 0; transform: scale(0.8); }
+}
+.a3-emote-boo .a3-boo-text {
+  animation: a3-boo-scroll 2.5s linear 0.3s forwards;
+}
+@keyframes a3-boo-scroll {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 1; transform: translateX(-145px); }
+}
+
+.a3-emote-love .a3-heart {
+  animation: a3-heart-rise 1.2s ease-out forwards;
+}
+.a3-emote-love .a3-heart-1 { animation-delay: 0.2s; }
+.a3-emote-love .a3-heart-2 { animation-delay: 0.7s; }
+.a3-emote-love .a3-heart-3 { animation-delay: 1.2s; }
+@keyframes a3-heart-rise {
+  0%   { opacity: 0;   transform: translateY(0)     scale(0.6); }
+  18%  { opacity: 1;   transform: translateY(-8px)  scale(1.2); }
+  50%  { opacity: 0.9; transform: translateY(-22px) scale(1.0); }
+  80%  { opacity: 0.3; transform: translateY(-35px) scale(0.8); }
+  100% { opacity: 0;   transform: translateY(-44px) scale(0.5); }
+}
+
+.a3-emote-think .a3-character {
+  transform-origin: 50% 100%;
+  animation: a3-think-squish 2.5s ease-in-out forwards;
+}
+@keyframes a3-think-squish {
+  0%   { transform: scaleY(1.0); }
+  13%  { transform: scaleY(0.5); }
+  68%  { transform: scaleY(0.5); }
+  78%  { transform: scaleY(1.05); }
+  86%  { transform: scaleY(0.97); }
+  92%  { transform: scaleY(1.0); }
+  100% { transform: scaleY(1.0); }
+}
+.a3-emote-think .a3-think-q {
+  animation: a3-q-pulse 2.5s ease-out forwards;
+}
+.a3-emote-think .a3-think-q-1 { animation-delay: 0s; }
+.a3-emote-think .a3-think-q-2 { animation-delay: 0.4s; }
+.a3-emote-think .a3-think-q-3 { animation-delay: 0.8s; }
+@keyframes a3-q-pulse {
+  0%   { opacity: 0;   transform: scale(0); }
+  16%  { opacity: 1;   transform: scale(1.3); }
+  26%  { opacity: 1;   transform: scale(0.9); }
+  38%  { opacity: 1;   transform: scale(1.05); }
+  54%  { opacity: 1;   transform: scale(1.15); }
+  68%  { opacity: 1;   transform: scale(0.95); }
+  80%  { opacity: 1;   transform: scale(1.0); }
+  92%  { opacity: 0.4; transform: scale(1.0); }
+  100% { opacity: 0;   transform: scale(0.8); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   AVATAR A5 EMOTE ANIMATIONS
+   ══════════════════════════════════════════════════════════ */
+
+.a5-character {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a5-ha, .a5-star, .a5-bang, .a5-boo-text, .a5-boo-thumb, .a5-heart, .a5-think-q {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a5-boo-thumb {
+  filter: grayscale(1) brightness(0);
+}
+
+/* LAUGH — head rocks */
+.a5-emote-laugh #head {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: a5-laugh-head 2.5s ease-in-out forwards;
+}
+@keyframes a5-laugh-head {
+  0%, 6%  { transform: rotate(0deg); }
+  27%     { transform: rotate(-22deg); }
+  36%     { transform: rotate(22deg); }
+  45%     { transform: rotate(-20deg); }
+  54%     { transform: rotate(20deg); }
+  62%     { transform: rotate(-10deg); }
+  70%     { transform: rotate(8deg); }
+  78%     { transform: rotate(0deg); }
+  100%    { transform: rotate(0deg); }
+}
+.a5-emote-laugh .a5-ha {
+  animation: a5-ha-pop 1.0s ease-out forwards;
+}
+.a5-emote-laugh .a5-ha-1 { animation-delay: 0.15s; }
+.a5-emote-laugh .a5-ha-2 { animation-delay: 0.6s; }
+.a5-emote-laugh .a5-ha-3 { animation-delay: 1.05s; }
+@keyframes a5-ha-pop {
+  0%   { opacity: 0;   transform: scale(0)    rotate(-22deg); }
+  18%  { opacity: 1;   transform: scale(1.3)  rotate(12deg); }
+  38%  { opacity: 1;   transform: scale(0.95) rotate(-6deg); }
+  55%  { opacity: 1;   transform: scale(1.05) rotate(4deg); }
+  70%  { opacity: 1;   transform: scale(1.0)  rotate(0deg); }
+  88%  { opacity: 0.4; transform: scale(1.0)  rotate(0deg); }
+  100% { opacity: 0;   transform: scale(0.9)  rotate(6deg); }
+}
+
+/* CHEER — whole character spins */
+.a5-emote-cheer .a5-character {
+  animation: a5-cheer-spin 2.5s linear forwards;
+}
+@keyframes a5-cheer-spin {
+  0%   { transform: rotate(0deg); }
+  75%  { transform: rotate(1080deg); }
+  100% { transform: rotate(1080deg); }
+}
+.a5-emote-cheer .a5-star {
+  animation: a5-star-pop 1.0s ease-out forwards;
+}
+.a5-emote-cheer .a5-star-1 { animation-delay: 0.2s; }
+.a5-emote-cheer .a5-star-2 { animation-delay: 0.45s; }
+.a5-emote-cheer .a5-star-3 { animation-delay: 0.7s; }
+.a5-emote-cheer .a5-star-4 { animation-delay: 0.95s; }
+.a5-emote-cheer .a5-star-5 { animation-delay: 1.2s; }
+.a5-emote-cheer .a5-star-6 { animation-delay: 0.35s; }
+.a5-emote-cheer .a5-star-7 { animation-delay: 0.6s; }
+.a5-emote-cheer .a5-star-8 { animation-delay: 0.85s; }
+@keyframes a5-star-pop {
+  0%   { opacity: 0;   transform: scale(0)   rotate(0deg); }
+  20%  { opacity: 1;   transform: scale(1.4) rotate(45deg); }
+  55%  { opacity: 1;   transform: scale(1.0) rotate(90deg); }
+  80%  { opacity: 0.5; transform: scale(1.0) rotate(120deg); }
+  100% { opacity: 0;   transform: scale(0.6) rotate(160deg); }
+}
+
+/* SHOCKED — elastic squish then ! swings */
+.a5-emote-shocked .a5-character {
+  animation: a5-shocked-elastic 2.5s ease-in-out forwards;
+}
+@keyframes a5-shocked-elastic {
+  0%, 10% { transform: scale(1); }
+  18%     { transform: scale(0.2); }
+  28%     { transform: scale(1.18); }
+  35%     { transform: scale(0.88); }
+  42%     { transform: scale(1.06); }
+  48%     { transform: scale(0.97); }
+  54%     { transform: scale(1.0); }
+  72%     { transform: scale(1.0); }
+  100%    { transform: scale(1.0); }
+}
+.a5-emote-shocked .a5-bang {
+  transform-origin: 50% 100%;
+  animation: a5-bang-swing 2.5s linear forwards;
+}
+@keyframes a5-bang-swing {
+  0%, 25% { opacity: 0; transform: rotate(0deg); }
+  28%     { opacity: 1; transform: rotate(0deg); }
+  34%     { opacity: 1; transform: rotate(32deg); }
+  42%     { opacity: 1; transform: rotate(-24deg); }
+  50%     { opacity: 1; transform: rotate(16deg); }
+  57%     { opacity: 1; transform: rotate(-9deg); }
+  63%     { opacity: 1; transform: rotate(5deg); }
+  69%     { opacity: 1; transform: rotate(-2deg); }
+  76%     { opacity: 1; transform: rotate(0deg); }
+  88%     { opacity: 1; transform: rotate(0deg); }
+  100%    { opacity: 0; transform: rotate(0deg); }
+}
+
+/* BOO — flip then ticker scrolls */
+.a5-emote-boo .a5-character {
+  animation: a5-boo-flip 2.5s ease-in-out forwards;
+}
+@keyframes a5-boo-flip {
+  0%, 10% { transform: rotate(0deg); }
+  20%     { transform: rotate(180deg); }
+  82%     { transform: rotate(180deg); }
+  100%    { transform: rotate(180deg); }
+}
+.a5-emote-boo .a5-boo-thumb {
+  animation: a5-boo-appear 2.5s ease-out forwards;
+}
+@keyframes a5-boo-appear {
+  0%, 24% { opacity: 0; transform: scale(0.5); }
+  36%     { opacity: 1; transform: scale(1.1); }
+  46%     { opacity: 1; transform: scale(1.0); }
+  78%     { opacity: 1; transform: scale(1.0); }
+  100%    { opacity: 0; transform: scale(0.8); }
+}
+.a5-emote-boo .a5-boo-text {
+  animation: a5-boo-scroll 2.5s linear 0.3s forwards;
+}
+@keyframes a5-boo-scroll {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 1; transform: translateX(-218px); }
+}
+
+/* LOVE — hearts rise */
+.a5-emote-love .a5-heart {
+  animation: a5-heart-rise 1.2s ease-out forwards;
+}
+.a5-emote-love .a5-heart-1 { animation-delay: 0.2s; }
+.a5-emote-love .a5-heart-2 { animation-delay: 0.7s; }
+.a5-emote-love .a5-heart-3 { animation-delay: 1.2s; }
+@keyframes a5-heart-rise {
+  0%   { opacity: 0;   transform: translateY(0)     scale(0.6); }
+  18%  { opacity: 1;   transform: translateY(-8px)  scale(1.2); }
+  50%  { opacity: 0.9; transform: translateY(-22px) scale(1.0); }
+  80%  { opacity: 0.3; transform: translateY(-35px) scale(0.8); }
+  100% { opacity: 0;   transform: translateY(-44px) scale(0.5); }
+}
+
+/* THINK — squish then ?s pop */
+.a5-emote-think .a5-character {
+  transform-origin: 50% 100%;
+  animation: a5-think-squish 2.5s ease-in-out forwards;
+}
+@keyframes a5-think-squish {
+  0%   { transform: scaleY(1.0); }
+  13%  { transform: scaleY(0.5); }
+  68%  { transform: scaleY(0.5); }
+  78%  { transform: scaleY(1.05); }
+  86%  { transform: scaleY(0.97); }
+  92%  { transform: scaleY(1.0); }
+  100% { transform: scaleY(1.0); }
+}
+.a5-emote-think .a5-think-q {
+  animation: a5-q-pulse 2.5s ease-out forwards;
+}
+.a5-emote-think .a5-think-q-1 { animation-delay: 0s; }
+.a5-emote-think .a5-think-q-2 { animation-delay: 0.4s; }
+.a5-emote-think .a5-think-q-3 { animation-delay: 0.8s; }
+@keyframes a5-q-pulse {
+  0%   { opacity: 0;   transform: scale(0); }
+  16%  { opacity: 1;   transform: scale(1.3); }
+  26%  { opacity: 1;   transform: scale(0.9); }
+  38%  { opacity: 1;   transform: scale(1.05); }
+  54%  { opacity: 1;   transform: scale(1.15); }
+  68%  { opacity: 1;   transform: scale(0.95); }
+  80%  { opacity: 1;   transform: scale(1.0); }
+  92%  { opacity: 0.4; transform: scale(1.0); }
+  100% { opacity: 0;   transform: scale(0.8); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   AVATAR A6 EMOTE ANIMATIONS
+   ══════════════════════════════════════════════════════════ */
+
+.a6-character {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a6-ha, .a6-star, .a6-bang, .a6-boo-text, .a6-boo-thumb, .a6-heart, .a6-think-q {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a6-boo-thumb {
+  filter: grayscale(1) brightness(0);
+}
+
+/* LAUGH — whole character rocks (body parts share head group, so animate together) */
+.a6-emote-laugh .a6-character {
+  transform-box: fill-box;
+  transform-origin: 50% 90%;
+  animation: a6-laugh-head 2.5s ease-in-out forwards;
+}
+@keyframes a6-laugh-head {
+  0%, 6%  { transform: rotate(0deg); }
+  27%     { transform: rotate(-22deg); }
+  36%     { transform: rotate(22deg); }
+  45%     { transform: rotate(-20deg); }
+  54%     { transform: rotate(20deg); }
+  62%     { transform: rotate(-10deg); }
+  70%     { transform: rotate(8deg); }
+  78%     { transform: rotate(0deg); }
+  100%    { transform: rotate(0deg); }
+}
+.a6-emote-laugh .a6-ha {
+  animation: a6-ha-pop 1.0s ease-out forwards;
+}
+.a6-emote-laugh .a6-ha-1 { animation-delay: 0.15s; }
+.a6-emote-laugh .a6-ha-2 { animation-delay: 0.6s; }
+.a6-emote-laugh .a6-ha-3 { animation-delay: 1.05s; }
+@keyframes a6-ha-pop {
+  0%   { opacity: 0;   transform: scale(0)    rotate(-22deg); }
+  18%  { opacity: 1;   transform: scale(1.3)  rotate(12deg); }
+  38%  { opacity: 1;   transform: scale(0.95) rotate(-6deg); }
+  55%  { opacity: 1;   transform: scale(1.05) rotate(4deg); }
+  70%  { opacity: 1;   transform: scale(1.0)  rotate(0deg); }
+  88%  { opacity: 0.4; transform: scale(1.0)  rotate(0deg); }
+  100% { opacity: 0;   transform: scale(0.9)  rotate(6deg); }
+}
+
+/* CHEER — whole character spins */
+.a6-emote-cheer .a6-character {
+  animation: a6-cheer-spin 2.5s linear forwards;
+}
+@keyframes a6-cheer-spin {
+  0%   { transform: rotate(0deg); }
+  75%  { transform: rotate(1080deg); }
+  100% { transform: rotate(1080deg); }
+}
+.a6-emote-cheer .a6-star {
+  animation: a6-star-pop 1.0s ease-out forwards;
+}
+.a6-emote-cheer .a6-star-1 { animation-delay: 0.2s; }
+.a6-emote-cheer .a6-star-2 { animation-delay: 0.45s; }
+.a6-emote-cheer .a6-star-3 { animation-delay: 0.7s; }
+.a6-emote-cheer .a6-star-4 { animation-delay: 0.95s; }
+.a6-emote-cheer .a6-star-5 { animation-delay: 1.2s; }
+.a6-emote-cheer .a6-star-6 { animation-delay: 0.35s; }
+.a6-emote-cheer .a6-star-7 { animation-delay: 0.6s; }
+.a6-emote-cheer .a6-star-8 { animation-delay: 0.85s; }
+@keyframes a6-star-pop {
+  0%   { opacity: 0;   transform: scale(0)   rotate(0deg); }
+  20%  { opacity: 1;   transform: scale(1.4) rotate(45deg); }
+  55%  { opacity: 1;   transform: scale(1.0) rotate(90deg); }
+  80%  { opacity: 0.5; transform: scale(1.0) rotate(120deg); }
+  100% { opacity: 0;   transform: scale(0.6) rotate(160deg); }
+}
+
+/* SHOCKED — elastic squish then ! swings */
+.a6-emote-shocked .a6-character {
+  animation: a6-shocked-elastic 2.5s ease-in-out forwards;
+}
+@keyframes a6-shocked-elastic {
+  0%, 10% { transform: scale(1); }
+  18%     { transform: scale(0.2); }
+  28%     { transform: scale(1.18); }
+  35%     { transform: scale(0.88); }
+  42%     { transform: scale(1.06); }
+  48%     { transform: scale(0.97); }
+  54%     { transform: scale(1.0); }
+  72%     { transform: scale(1.0); }
+  100%    { transform: scale(1.0); }
+}
+.a6-emote-shocked .a6-bang {
+  transform-origin: 50% 100%;
+  animation: a6-bang-swing 2.5s linear forwards;
+}
+@keyframes a6-bang-swing {
+  0%, 25% { opacity: 0; transform: rotate(0deg); }
+  28%     { opacity: 1; transform: rotate(0deg); }
+  34%     { opacity: 1; transform: rotate(32deg); }
+  42%     { opacity: 1; transform: rotate(-24deg); }
+  50%     { opacity: 1; transform: rotate(16deg); }
+  57%     { opacity: 1; transform: rotate(-9deg); }
+  63%     { opacity: 1; transform: rotate(5deg); }
+  69%     { opacity: 1; transform: rotate(-2deg); }
+  76%     { opacity: 1; transform: rotate(0deg); }
+  88%     { opacity: 1; transform: rotate(0deg); }
+  100%    { opacity: 0; transform: rotate(0deg); }
+}
+
+/* BOO — flip then ticker scrolls */
+.a6-emote-boo .a6-character {
+  animation: a6-boo-flip 2.5s ease-in-out forwards;
+}
+@keyframes a6-boo-flip {
+  0%, 10% { transform: rotate(0deg); }
+  20%     { transform: rotate(180deg); }
+  82%     { transform: rotate(180deg); }
+  100%    { transform: rotate(180deg); }
+}
+.a6-emote-boo .a6-boo-thumb {
+  animation: a6-boo-appear 2.5s ease-out forwards;
+}
+@keyframes a6-boo-appear {
+  0%, 24% { opacity: 0; transform: scale(0.5); }
+  36%     { opacity: 1; transform: scale(1.1); }
+  46%     { opacity: 1; transform: scale(1.0); }
+  78%     { opacity: 1; transform: scale(1.0); }
+  100%    { opacity: 0; transform: scale(0.8); }
+}
+.a6-emote-boo .a6-boo-text {
+  animation: a6-boo-scroll 2.5s linear 0.3s forwards;
+}
+@keyframes a6-boo-scroll {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 1; transform: translateX(-375px); }
+}
+
+/* LOVE — hearts rise */
+.a6-emote-love .a6-heart {
+  animation: a6-heart-rise 1.2s ease-out forwards;
+}
+.a6-emote-love .a6-heart-1 { animation-delay: 0.2s; }
+.a6-emote-love .a6-heart-2 { animation-delay: 0.7s; }
+.a6-emote-love .a6-heart-3 { animation-delay: 1.2s; }
+@keyframes a6-heart-rise {
+  0%   { opacity: 0;   transform: translateY(0)     scale(0.6); }
+  18%  { opacity: 1;   transform: translateY(-8px)  scale(1.2); }
+  50%  { opacity: 0.9; transform: translateY(-22px) scale(1.0); }
+  80%  { opacity: 0.3; transform: translateY(-35px) scale(0.8); }
+  100% { opacity: 0;   transform: translateY(-44px) scale(0.5); }
+}
+
+/* THINK — squish then ?s pop */
+.a6-emote-think .a6-character {
+  transform-origin: 50% 100%;
+  animation: a6-think-squish 2.5s ease-in-out forwards;
+}
+@keyframes a6-think-squish {
+  0%   { transform: scaleY(1.0); }
+  13%  { transform: scaleY(0.5); }
+  68%  { transform: scaleY(0.5); }
+  78%  { transform: scaleY(1.05); }
+  86%  { transform: scaleY(0.97); }
+  92%  { transform: scaleY(1.0); }
+  100% { transform: scaleY(1.0); }
+}
+.a6-emote-think .a6-think-q {
+  animation: a6-q-pulse 2.5s ease-out forwards;
+}
+.a6-emote-think .a6-think-q-1 { animation-delay: 0s; }
+.a6-emote-think .a6-think-q-2 { animation-delay: 0.4s; }
+.a6-emote-think .a6-think-q-3 { animation-delay: 0.8s; }
+@keyframes a6-q-pulse {
+  0%   { opacity: 0;   transform: scale(0); }
+  16%  { opacity: 1;   transform: scale(1.3); }
+  26%  { opacity: 1;   transform: scale(0.9); }
+  38%  { opacity: 1;   transform: scale(1.05); }
+  54%  { opacity: 1;   transform: scale(1.15); }
+  68%  { opacity: 1;   transform: scale(0.95); }
+  80%  { opacity: 1;   transform: scale(1.0); }
+  92%  { opacity: 0.4; transform: scale(1.0); }
+  100% { opacity: 0;   transform: scale(0.8); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   AVATAR A8 EMOTE ANIMATIONS
+   ══════════════════════════════════════════════════════════ */
+
+.a8-character {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a8-ha, .a8-star, .a8-bang, .a8-boo-text, .a8-boo-thumb, .a8-heart, .a8-think-q {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a8-boo-thumb { filter: grayscale(1) brightness(0); }
+
+/* LAUGH — whole character rocks (raised arm sits in head group due to Y-coord, so animate together) */
+.a8-emote-laugh .a8-character {
+  transform-box: fill-box;
+  transform-origin: 50% 90%;
+  animation: a8-laugh-head 2.5s ease-in-out forwards;
+}
+@keyframes a8-laugh-head {
+  0%, 6%  { transform: rotate(0deg); }
+  27%     { transform: rotate(-22deg); }
+  36%     { transform: rotate(22deg); }
+  45%     { transform: rotate(-20deg); }
+  54%     { transform: rotate(20deg); }
+  62%     { transform: rotate(-10deg); }
+  70%     { transform: rotate(8deg); }
+  78%     { transform: rotate(0deg); }
+  100%    { transform: rotate(0deg); }
+}
+.a8-emote-laugh .a8-ha { animation: a8-ha-pop 1.0s ease-out forwards; }
+.a8-emote-laugh .a8-ha-1 { animation-delay: 0.15s; }
+.a8-emote-laugh .a8-ha-2 { animation-delay: 0.6s; }
+.a8-emote-laugh .a8-ha-3 { animation-delay: 1.05s; }
+@keyframes a8-ha-pop {
+  0%   { opacity: 0;   transform: scale(0)    rotate(-22deg); }
+  18%  { opacity: 1;   transform: scale(1.3)  rotate(12deg); }
+  38%  { opacity: 1;   transform: scale(0.95) rotate(-6deg); }
+  55%  { opacity: 1;   transform: scale(1.05) rotate(4deg); }
+  70%  { opacity: 1;   transform: scale(1.0)  rotate(0deg); }
+  88%  { opacity: 0.4; transform: scale(1.0)  rotate(0deg); }
+  100% { opacity: 0;   transform: scale(0.9)  rotate(6deg); }
+}
+
+.a8-emote-cheer .a8-character { animation: a8-cheer-spin 2.5s linear forwards; }
+@keyframes a8-cheer-spin {
+  0%   { transform: rotate(0deg); }
+  75%  { transform: rotate(1080deg); }
+  100% { transform: rotate(1080deg); }
+}
+.a8-emote-cheer .a8-star { animation: a8-star-pop 1.0s ease-out forwards; }
+.a8-emote-cheer .a8-star-1 { animation-delay: 0.2s; }
+.a8-emote-cheer .a8-star-2 { animation-delay: 0.45s; }
+.a8-emote-cheer .a8-star-3 { animation-delay: 0.7s; }
+.a8-emote-cheer .a8-star-4 { animation-delay: 0.95s; }
+.a8-emote-cheer .a8-star-5 { animation-delay: 1.2s; }
+.a8-emote-cheer .a8-star-6 { animation-delay: 0.35s; }
+.a8-emote-cheer .a8-star-7 { animation-delay: 0.6s; }
+.a8-emote-cheer .a8-star-8 { animation-delay: 0.85s; }
+@keyframes a8-star-pop {
+  0%   { opacity: 0;   transform: scale(0)   rotate(0deg); }
+  20%  { opacity: 1;   transform: scale(1.4) rotate(45deg); }
+  55%  { opacity: 1;   transform: scale(1.0) rotate(90deg); }
+  80%  { opacity: 0.5; transform: scale(1.0) rotate(120deg); }
+  100% { opacity: 0;   transform: scale(0.6) rotate(160deg); }
+}
+
+.a8-emote-shocked .a8-character { animation: a8-shocked-elastic 2.5s ease-in-out forwards; }
+@keyframes a8-shocked-elastic {
+  0%, 10% { transform: scale(1); }
+  18%     { transform: scale(0.2); }
+  28%     { transform: scale(1.18); }
+  35%     { transform: scale(0.88); }
+  42%     { transform: scale(1.06); }
+  48%     { transform: scale(0.97); }
+  54%     { transform: scale(1.0); }
+  100%    { transform: scale(1.0); }
+}
+.a8-emote-shocked .a8-bang {
+  transform-origin: 50% 100%;
+  animation: a8-bang-swing 2.5s linear forwards;
+}
+@keyframes a8-bang-swing {
+  0%, 25% { opacity: 0; transform: rotate(0deg); }
+  28%     { opacity: 1; transform: rotate(0deg); }
+  34%     { opacity: 1; transform: rotate(32deg); }
+  42%     { opacity: 1; transform: rotate(-24deg); }
+  50%     { opacity: 1; transform: rotate(16deg); }
+  57%     { opacity: 1; transform: rotate(-9deg); }
+  63%     { opacity: 1; transform: rotate(5deg); }
+  69%     { opacity: 1; transform: rotate(-2deg); }
+  76%     { opacity: 1; transform: rotate(0deg); }
+  88%     { opacity: 1; transform: rotate(0deg); }
+  100%    { opacity: 0; transform: rotate(0deg); }
+}
+
+.a8-emote-boo .a8-character { animation: a8-boo-flip 2.5s ease-in-out forwards; }
+@keyframes a8-boo-flip {
+  0%, 10% { transform: rotate(0deg); }
+  20%     { transform: rotate(180deg); }
+  82%     { transform: rotate(180deg); }
+  100%    { transform: rotate(180deg); }
+}
+.a8-emote-boo .a8-boo-thumb { animation: a8-boo-appear 2.5s ease-out forwards; }
+@keyframes a8-boo-appear {
+  0%, 24% { opacity: 0; transform: scale(0.5); }
+  36%     { opacity: 1; transform: scale(1.1); }
+  46%     { opacity: 1; transform: scale(1.0); }
+  78%     { opacity: 1; transform: scale(1.0); }
+  100%    { opacity: 0; transform: scale(0.8); }
+}
+.a8-emote-boo .a8-boo-text {
+  animation: a8-boo-scroll 2.5s linear 0.3s forwards;
+}
+@keyframes a8-boo-scroll {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 1; transform: translateX(-265px); }
+}
+
+.a8-emote-love .a8-heart { animation: a8-heart-rise 1.2s ease-out forwards; }
+.a8-emote-love .a8-heart-1 { animation-delay: 0.2s; }
+.a8-emote-love .a8-heart-2 { animation-delay: 0.7s; }
+.a8-emote-love .a8-heart-3 { animation-delay: 1.2s; }
+@keyframes a8-heart-rise {
+  0%   { opacity: 0;   transform: translateY(0)     scale(0.6); }
+  18%  { opacity: 1;   transform: translateY(-8px)  scale(1.2); }
+  50%  { opacity: 0.9; transform: translateY(-22px) scale(1.0); }
+  80%  { opacity: 0.3; transform: translateY(-35px) scale(0.8); }
+  100% { opacity: 0;   transform: translateY(-44px) scale(0.5); }
+}
+
+.a8-emote-think .a8-character {
+  transform-origin: 50% 100%;
+  animation: a8-think-squish 2.5s ease-in-out forwards;
+}
+@keyframes a8-think-squish {
+  0%   { transform: scaleY(1.0); }
+  13%  { transform: scaleY(0.5); }
+  68%  { transform: scaleY(0.5); }
+  78%  { transform: scaleY(1.05); }
+  86%  { transform: scaleY(0.97); }
+  92%  { transform: scaleY(1.0); }
+  100% { transform: scaleY(1.0); }
+}
+.a8-emote-think .a8-think-q { animation: a8-q-pulse 2.5s ease-out forwards; }
+.a8-emote-think .a8-think-q-1 { animation-delay: 0s; }
+.a8-emote-think .a8-think-q-2 { animation-delay: 0.4s; }
+.a8-emote-think .a8-think-q-3 { animation-delay: 0.8s; }
+@keyframes a8-q-pulse {
+  0%   { opacity: 0;   transform: scale(0); }
+  16%  { opacity: 1;   transform: scale(1.3); }
+  26%  { opacity: 1;   transform: scale(0.9); }
+  38%  { opacity: 1;   transform: scale(1.05); }
+  54%  { opacity: 1;   transform: scale(1.15); }
+  68%  { opacity: 1;   transform: scale(0.95); }
+  80%  { opacity: 1;   transform: scale(1.0); }
+  92%  { opacity: 0.4; transform: scale(1.0); }
+  100% { opacity: 0;   transform: scale(0.8); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   AVATAR A10 EMOTE ANIMATIONS
+   ══════════════════════════════════════════════════════════ */
+
+.a10-character {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a10-ha, .a10-star, .a10-bang, .a10-boo-text, .a10-boo-thumb, .a10-heart, .a10-think-q {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a10-boo-thumb { filter: grayscale(1) brightness(0); }
+
+/* LAUGH — whole cloud rocks (head IS the body) */
+.a10-emote-laugh .a10-character {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: a10-laugh-rock 2.5s ease-in-out forwards;
+}
+@keyframes a10-laugh-rock {
+  0%, 6%  { transform: rotate(0deg); }
+  27%     { transform: rotate(-18deg); }
+  36%     { transform: rotate(18deg); }
+  45%     { transform: rotate(-15deg); }
+  54%     { transform: rotate(15deg); }
+  62%     { transform: rotate(-8deg); }
+  70%     { transform: rotate(6deg); }
+  78%     { transform: rotate(0deg); }
+  100%    { transform: rotate(0deg); }
+}
+.a10-emote-laugh .a10-ha { animation: a10-ha-pop 1.0s ease-out forwards; }
+.a10-emote-laugh .a10-ha-1 { animation-delay: 0.15s; }
+.a10-emote-laugh .a10-ha-2 { animation-delay: 0.6s; }
+.a10-emote-laugh .a10-ha-3 { animation-delay: 1.05s; }
+@keyframes a10-ha-pop {
+  0%   { opacity: 0;   transform: scale(0)    rotate(-22deg); }
+  18%  { opacity: 1;   transform: scale(1.3)  rotate(12deg); }
+  38%  { opacity: 1;   transform: scale(0.95) rotate(-6deg); }
+  55%  { opacity: 1;   transform: scale(1.05) rotate(4deg); }
+  70%  { opacity: 1;   transform: scale(1.0)  rotate(0deg); }
+  88%  { opacity: 0.4; transform: scale(1.0)  rotate(0deg); }
+  100% { opacity: 0;   transform: scale(0.9)  rotate(6deg); }
+}
+
+.a10-emote-cheer .a10-character { animation: a10-cheer-spin 2.5s linear forwards; }
+@keyframes a10-cheer-spin {
+  0%   { transform: rotate(0deg); }
+  75%  { transform: rotate(1080deg); }
+  100% { transform: rotate(1080deg); }
+}
+.a10-emote-cheer .a10-star { animation: a10-star-pop 1.0s ease-out forwards; }
+.a10-emote-cheer .a10-star-1 { animation-delay: 0.2s; }
+.a10-emote-cheer .a10-star-2 { animation-delay: 0.45s; }
+.a10-emote-cheer .a10-star-3 { animation-delay: 0.7s; }
+.a10-emote-cheer .a10-star-4 { animation-delay: 0.95s; }
+.a10-emote-cheer .a10-star-5 { animation-delay: 1.2s; }
+.a10-emote-cheer .a10-star-6 { animation-delay: 0.35s; }
+.a10-emote-cheer .a10-star-7 { animation-delay: 0.6s; }
+.a10-emote-cheer .a10-star-8 { animation-delay: 0.85s; }
+@keyframes a10-star-pop {
+  0%   { opacity: 0;   transform: scale(0)   rotate(0deg); }
+  20%  { opacity: 1;   transform: scale(1.4) rotate(45deg); }
+  55%  { opacity: 1;   transform: scale(1.0) rotate(90deg); }
+  80%  { opacity: 0.5; transform: scale(1.0) rotate(120deg); }
+  100% { opacity: 0;   transform: scale(0.6) rotate(160deg); }
+}
+
+.a10-emote-shocked .a10-character { animation: a10-shocked-elastic 2.5s ease-in-out forwards; }
+@keyframes a10-shocked-elastic {
+  0%, 10% { transform: scale(1); }
+  18%     { transform: scale(0.2); }
+  28%     { transform: scale(1.18); }
+  35%     { transform: scale(0.88); }
+  42%     { transform: scale(1.06); }
+  48%     { transform: scale(0.97); }
+  54%     { transform: scale(1.0); }
+  100%    { transform: scale(1.0); }
+}
+.a10-emote-shocked .a10-bang {
+  transform-origin: 50% 100%;
+  animation: a10-bang-swing 2.5s linear forwards;
+}
+@keyframes a10-bang-swing {
+  0%, 25% { opacity: 0; transform: rotate(0deg); }
+  28%     { opacity: 1; transform: rotate(0deg); }
+  34%     { opacity: 1; transform: rotate(32deg); }
+  42%     { opacity: 1; transform: rotate(-24deg); }
+  50%     { opacity: 1; transform: rotate(16deg); }
+  57%     { opacity: 1; transform: rotate(-9deg); }
+  63%     { opacity: 1; transform: rotate(5deg); }
+  69%     { opacity: 1; transform: rotate(-2deg); }
+  76%     { opacity: 1; transform: rotate(0deg); }
+  88%     { opacity: 1; transform: rotate(0deg); }
+  100%    { opacity: 0; transform: rotate(0deg); }
+}
+
+.a10-emote-boo .a10-character { animation: a10-boo-flip 2.5s ease-in-out forwards; }
+@keyframes a10-boo-flip {
+  0%, 10% { transform: rotate(0deg); }
+  20%     { transform: rotate(180deg); }
+  82%     { transform: rotate(180deg); }
+  100%    { transform: rotate(180deg); }
+}
+.a10-emote-boo .a10-boo-thumb { animation: a10-boo-appear 2.5s ease-out forwards; }
+@keyframes a10-boo-appear {
+  0%, 24% { opacity: 0; transform: scale(0.5); }
+  36%     { opacity: 1; transform: scale(1.1); }
+  46%     { opacity: 1; transform: scale(1.0); }
+  78%     { opacity: 1; transform: scale(1.0); }
+  100%    { opacity: 0; transform: scale(0.8); }
+}
+.a10-emote-boo .a10-boo-text {
+  animation: a10-boo-scroll 2.5s linear 0.3s forwards;
+}
+@keyframes a10-boo-scroll {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 1; transform: translateX(-188px); }
+}
+
+.a10-emote-love .a10-heart { animation: a10-heart-rise 1.2s ease-out forwards; }
+.a10-emote-love .a10-heart-1 { animation-delay: 0.2s; }
+.a10-emote-love .a10-heart-2 { animation-delay: 0.7s; }
+.a10-emote-love .a10-heart-3 { animation-delay: 1.2s; }
+@keyframes a10-heart-rise {
+  0%   { opacity: 0;   transform: translateY(0)     scale(0.6); }
+  18%  { opacity: 1;   transform: translateY(-8px)  scale(1.2); }
+  50%  { opacity: 0.9; transform: translateY(-22px) scale(1.0); }
+  80%  { opacity: 0.3; transform: translateY(-35px) scale(0.8); }
+  100% { opacity: 0;   transform: translateY(-44px) scale(0.5); }
+}
+
+.a10-emote-think .a10-character {
+  transform-origin: 50% 100%;
+  animation: a10-think-squish 2.5s ease-in-out forwards;
+}
+@keyframes a10-think-squish {
+  0%   { transform: scaleY(1.0); }
+  13%  { transform: scaleY(0.5); }
+  68%  { transform: scaleY(0.5); }
+  78%  { transform: scaleY(1.05); }
+  86%  { transform: scaleY(0.97); }
+  92%  { transform: scaleY(1.0); }
+  100% { transform: scaleY(1.0); }
+}
+.a10-emote-think .a10-think-q { animation: a10-q-pulse 2.5s ease-out forwards; }
+.a10-emote-think .a10-think-q-1 { animation-delay: 0s; }
+.a10-emote-think .a10-think-q-2 { animation-delay: 0.4s; }
+.a10-emote-think .a10-think-q-3 { animation-delay: 0.8s; }
+@keyframes a10-q-pulse {
+  0%   { opacity: 0;   transform: scale(0); }
+  16%  { opacity: 1;   transform: scale(1.3); }
+  26%  { opacity: 1;   transform: scale(0.9); }
+  38%  { opacity: 1;   transform: scale(1.05); }
+  54%  { opacity: 1;   transform: scale(1.15); }
+  68%  { opacity: 1;   transform: scale(0.95); }
+  80%  { opacity: 1;   transform: scale(1.0); }
+  92%  { opacity: 0.4; transform: scale(1.0); }
+  100% { opacity: 0;   transform: scale(0.8); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   AVATAR A11 EMOTE ANIMATIONS
+   ══════════════════════════════════════════════════════════ */
+
+.a11-character {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a11-ha, .a11-star, .a11-bang, .a11-boo-text, .a11-boo-thumb, .a11-heart, .a11-think-q {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.a11-boo-thumb { filter: grayscale(1) brightness(0); }
+
+/* LAUGH — whole character rocks so arms move with head */
+.a11-emote-laugh .a11-character {
+  transform-box: fill-box;
+  transform-origin: 50% 90%;
+  animation: a11-laugh-head 2.5s ease-in-out forwards;
+}
+@keyframes a11-laugh-head {
+  0%, 6%  { transform: rotate(0deg); }
+  27%     { transform: rotate(-22deg); }
+  36%     { transform: rotate(22deg); }
+  45%     { transform: rotate(-20deg); }
+  54%     { transform: rotate(20deg); }
+  62%     { transform: rotate(-10deg); }
+  70%     { transform: rotate(8deg); }
+  78%     { transform: rotate(0deg); }
+  100%    { transform: rotate(0deg); }
+}
+.a11-emote-laugh .a11-ha { animation: a11-ha-pop 1.0s ease-out forwards; }
+.a11-emote-laugh .a11-ha-1 { animation-delay: 0.15s; }
+.a11-emote-laugh .a11-ha-2 { animation-delay: 0.6s; }
+.a11-emote-laugh .a11-ha-3 { animation-delay: 1.05s; }
+@keyframes a11-ha-pop {
+  0%   { opacity: 0;   transform: scale(0)    rotate(-22deg); }
+  18%  { opacity: 1;   transform: scale(1.3)  rotate(12deg); }
+  38%  { opacity: 1;   transform: scale(0.95) rotate(-6deg); }
+  55%  { opacity: 1;   transform: scale(1.05) rotate(4deg); }
+  70%  { opacity: 1;   transform: scale(1.0)  rotate(0deg); }
+  88%  { opacity: 0.4; transform: scale(1.0)  rotate(0deg); }
+  100% { opacity: 0;   transform: scale(0.9)  rotate(6deg); }
+}
+
+.a11-emote-cheer .a11-character { animation: a11-cheer-spin 2.5s linear forwards; }
+@keyframes a11-cheer-spin {
+  0%   { transform: rotate(0deg); }
+  75%  { transform: rotate(1080deg); }
+  100% { transform: rotate(1080deg); }
+}
+.a11-emote-cheer .a11-star { animation: a11-star-pop 1.0s ease-out forwards; }
+.a11-emote-cheer .a11-star-1 { animation-delay: 0.2s; }
+.a11-emote-cheer .a11-star-2 { animation-delay: 0.45s; }
+.a11-emote-cheer .a11-star-3 { animation-delay: 0.7s; }
+.a11-emote-cheer .a11-star-4 { animation-delay: 0.95s; }
+.a11-emote-cheer .a11-star-5 { animation-delay: 1.2s; }
+.a11-emote-cheer .a11-star-6 { animation-delay: 0.35s; }
+.a11-emote-cheer .a11-star-7 { animation-delay: 0.6s; }
+.a11-emote-cheer .a11-star-8 { animation-delay: 0.85s; }
+@keyframes a11-star-pop {
+  0%   { opacity: 0;   transform: scale(0)   rotate(0deg); }
+  20%  { opacity: 1;   transform: scale(1.4) rotate(45deg); }
+  55%  { opacity: 1;   transform: scale(1.0) rotate(90deg); }
+  80%  { opacity: 0.5; transform: scale(1.0) rotate(120deg); }
+  100% { opacity: 0;   transform: scale(0.6) rotate(160deg); }
+}
+
+.a11-emote-shocked .a11-character { animation: a11-shocked-elastic 2.5s ease-in-out forwards; }
+@keyframes a11-shocked-elastic {
+  0%, 10% { transform: scale(1); }
+  18%     { transform: scale(0.2); }
+  28%     { transform: scale(1.18); }
+  35%     { transform: scale(0.88); }
+  42%     { transform: scale(1.06); }
+  48%     { transform: scale(0.97); }
+  54%     { transform: scale(1.0); }
+  100%    { transform: scale(1.0); }
+}
+.a11-emote-shocked .a11-bang {
+  transform-origin: 50% 100%;
+  animation: a11-bang-swing 2.5s linear forwards;
+}
+@keyframes a11-bang-swing {
+  0%, 25% { opacity: 0; transform: rotate(0deg); }
+  28%     { opacity: 1; transform: rotate(0deg); }
+  34%     { opacity: 1; transform: rotate(32deg); }
+  42%     { opacity: 1; transform: rotate(-24deg); }
+  50%     { opacity: 1; transform: rotate(16deg); }
+  57%     { opacity: 1; transform: rotate(-9deg); }
+  63%     { opacity: 1; transform: rotate(5deg); }
+  69%     { opacity: 1; transform: rotate(-2deg); }
+  76%     { opacity: 1; transform: rotate(0deg); }
+  88%     { opacity: 1; transform: rotate(0deg); }
+  100%    { opacity: 0; transform: rotate(0deg); }
+}
+
+.a11-emote-boo .a11-character { animation: a11-boo-flip 2.5s ease-in-out forwards; }
+@keyframes a11-boo-flip {
+  0%, 10% { transform: rotate(0deg); }
+  20%     { transform: rotate(180deg); }
+  82%     { transform: rotate(180deg); }
+  100%    { transform: rotate(180deg); }
+}
+.a11-emote-boo .a11-boo-thumb { animation: a11-boo-appear 2.5s ease-out forwards; }
+@keyframes a11-boo-appear {
+  0%, 24% { opacity: 0; transform: scale(0.5); }
+  36%     { opacity: 1; transform: scale(1.1); }
+  46%     { opacity: 1; transform: scale(1.0); }
+  78%     { opacity: 1; transform: scale(1.0); }
+  100%    { opacity: 0; transform: scale(0.8); }
+}
+.a11-emote-boo .a11-boo-text {
+  animation: a11-boo-scroll 2.5s linear 0.3s forwards;
+}
+@keyframes a11-boo-scroll {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 1; transform: translateX(-176px); }
+}
+
+.a11-emote-love .a11-heart { animation: a11-heart-rise 1.2s ease-out forwards; }
+.a11-emote-love .a11-heart-1 { animation-delay: 0.2s; }
+.a11-emote-love .a11-heart-2 { animation-delay: 0.7s; }
+.a11-emote-love .a11-heart-3 { animation-delay: 1.2s; }
+@keyframes a11-heart-rise {
+  0%   { opacity: 0;   transform: translateY(0)     scale(0.6); }
+  18%  { opacity: 1;   transform: translateY(-8px)  scale(1.2); }
+  50%  { opacity: 0.9; transform: translateY(-22px) scale(1.0); }
+  80%  { opacity: 0.3; transform: translateY(-35px) scale(0.8); }
+  100% { opacity: 0;   transform: translateY(-44px) scale(0.5); }
+}
+
+.a11-emote-think .a11-character {
+  transform-origin: 50% 100%;
+  animation: a11-think-squish 2.5s ease-in-out forwards;
+}
+@keyframes a11-think-squish {
+  0%   { transform: scaleY(1.0); }
+  13%  { transform: scaleY(0.5); }
+  68%  { transform: scaleY(0.5); }
+  78%  { transform: scaleY(1.05); }
+  86%  { transform: scaleY(0.97); }
+  92%  { transform: scaleY(1.0); }
+  100% { transform: scaleY(1.0); }
+}
+.a11-emote-think .a11-think-q { animation: a11-q-pulse 2.5s ease-out forwards; }
+.a11-emote-think .a11-think-q-1 { animation-delay: 0s; }
+.a11-emote-think .a11-think-q-2 { animation-delay: 0.4s; }
+.a11-emote-think .a11-think-q-3 { animation-delay: 0.8s; }
+@keyframes a11-q-pulse {
+  0%   { opacity: 0;   transform: scale(0); }
+  16%  { opacity: 1;   transform: scale(1.3); }
+  26%  { opacity: 1;   transform: scale(0.9); }
+  38%  { opacity: 1;   transform: scale(1.05); }
+  54%  { opacity: 1;   transform: scale(1.15); }
+  68%  { opacity: 1;   transform: scale(0.95); }
+  80%  { opacity: 1;   transform: scale(1.0); }
+  92%  { opacity: 0.4; transform: scale(1.0); }
+  100% { opacity: 0;   transform: scale(0.8); }
+}
+
+/* Lobby dev button — tiny, bottom-right of lobby card */
+.btn-lobby-dev {
+  position: fixed;
+  bottom: 12px;
+  right: 14px;
+  background: none;
+  border: 1.5px solid rgba(255,255,255,0.3);
+  border-radius: 5px;
+  color: rgba(255,255,255,0.35);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.2em 0.55em;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-lobby-dev:hover {
+  color: rgba(255,255,255,0.75);
+  border-color: rgba(255,255,255,0.6);
 }
 
 /* ===== AUDIO CONTROLS (bottom-left, always on top) ===== */
@@ -1408,6 +3410,14 @@ body {
   padding: 0.4rem 1rem;
   margin-top: 0.5rem;
   animation: countdown-pulse 1s ease-in-out infinite;
+}
+
+.timeout-no-audio {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #888;
+  margin-top: 0.5rem;
+  padding: 0.4rem 1rem;
 }
 
 @keyframes countdown-pulse {
@@ -2062,7 +4072,7 @@ body {
 .scoreboard-avatar.av-a1  { width: 66px; height: 66px; }
 .scoreboard-avatar.av-a2  { width: 63px; height: 63px; }
 .scoreboard-avatar.av-a3  { width: 63px; height: 63px; }
-.scoreboard-avatar.av-a4  { width: 82px; height: 82px; }
+.scoreboard-avatar.av-a4  { width: 68px; height: 68px; }
 .scoreboard-avatar.av-a5  { width: 60px; height: 60px; }
 .scoreboard-avatar.av-a6  { width: 62px; height: 62px; }
 .scoreboard-avatar.av-a7  { width: 71px; height: 71px; }
@@ -5056,7 +7066,7 @@ body {
   .scoreboard-avatar.av-a1  { width: 41px; height: 41px; }
   .scoreboard-avatar.av-a2  { width: 39px; height: 39px; }
   .scoreboard-avatar.av-a3  { width: 39px; height: 39px; }
-  .scoreboard-avatar.av-a4  { width: 51px; height: 51px; }
+  .scoreboard-avatar.av-a4  { width: 43px; height: 43px; }
   .scoreboard-avatar.av-a5  { width: 37px; height: 37px; }
   .scoreboard-avatar.av-a6  { width: 38px; height: 38px; }
   .scoreboard-avatar.av-a7  { width: 44px; height: 44px; }

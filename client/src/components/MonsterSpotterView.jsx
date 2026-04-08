@@ -6,7 +6,8 @@ import Scoreboard from './Scoreboard'
 import QuoteCard from './QuoteCard'
 import HelpOverlay from './HelpOverlay'
 import mvLogo from '../assets/brand/mv-logo.png'
-import { playSound, playDealSounds, preloadSounds } from '../utils/sounds'
+import { playSound, playDealSounds, preloadSounds, playDrumroll, stopDrumroll } from '../utils/sounds'
+import { setGameplayMuted } from '../utils/music'
 
 export default function MonsterSpotterView({ roundState, guessResult, scores, players, socket, flippedPositions = [], quoteFlipKey = 0, cardRevealActive = false, activeEmotes = {} }) {
   const { shuffledMonsters, quote, waitingForGuess, phase, currentSpeakerId, speakerName } = roundState
@@ -37,6 +38,7 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
 
   // Reset clicked position when speaker changes or on second chance
   useEffect(() => {
+    setGameplayMuted(false) // new round/second chance starts with music playing
     setClickedPosition(null)
   }, [currentSpeakerId, quoteFlipKey])
 
@@ -46,12 +48,13 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
       setShowResult(false)
       return
     }
-    // 600ms suspense, then reveal for 2800ms
     setRevealPending(true)
+    playDrumroll(800)
     setShowResult(false)
     const revealTimer = setTimeout(() => {
       setRevealPending(false)
       setShowResult(true)
+      setGameplayMuted(false)
       playSound(guessResult.correct ? 'correct' : 'wrong')
     }, 800)
     const clearTimer = setTimeout(() => {
@@ -61,6 +64,7 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
     return () => {
       clearTimeout(revealTimer)
       clearTimeout(clearTimer)
+      stopDrumroll()
     }
   }, [guessResult])
 
@@ -92,6 +96,11 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
       clearInterval(countdownIntervalRef.current)
     }
   }, [waitingForGuess, clickedPosition]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mute music as soon as the speaker's audio arrives (waitingForGuess = true)
+  useEffect(() => {
+    if (waitingForGuess) setGameplayMuted(true)
+  }, [waitingForGuess])
 
   const handleGuess = (position) => {
     if (!waitingForGuess || clickedPosition !== null) return
@@ -176,11 +185,13 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
             {countdown !== null && (
               <div className="timeout-countdown">Time's up in {countdown}s — guess now!</div>
             )}
-            {replayUrl && (
+            {replayUrl ? (
               <button className="btn btn-replay" onClick={handleReplay}>
                 Listen Again
               </button>
-            )}
+            ) : waitingForGuess ? (
+              <p className="timeout-no-audio">The speaker ran out of time and didn't record a voice — but you can still take a guess!</p>
+            ) : null}
             {showResult && guessResult && (
               <div className={`guess-result-overlay ${guessResult.correct ? 'result-correct' : 'result-wrong'}`}>
                 {guessResult.correct ? (

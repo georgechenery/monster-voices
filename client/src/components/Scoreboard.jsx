@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { AVATARS } from '../data/avatars'
 import { EMOTES } from '../data/emotes'
+import AvatarA9 from './AvatarA9'
+import AvatarA4 from './AvatarA4'
+import AvatarA1 from './AvatarA1'
+import AvatarA2 from './AvatarA2'
+import AvatarA3 from './AvatarA3'
+import AvatarA5 from './AvatarA5'
+import AvatarA6 from './AvatarA6'
+import AvatarA8 from './AvatarA8'
+import AvatarA10 from './AvatarA10'
+import AvatarA11 from './AvatarA11'
 
 // Varied durations + negative delays so no two avatars bob in sync
 const BOB_DURATIONS = [2.1, 2.6, 1.9, 2.4, 2.8, 2.2, 2.5, 1.8, 2.7, 2.3, 2.0]
@@ -77,7 +87,7 @@ export default function Scoreboard({ scores, roundState, activeEmotes = {} }) {
       if (fractionVisible >= 0.25) continue
 
       const player = scores.find(p => p.id === playerId)
-      const emote  = EMOTES.find(e => e.id === activeEmotes[playerId])
+      const emote  = EMOTES.find(e => e.id === activeEmotes[playerId]?.emoteId)
       if (!player || !emote) continue
 
       const fromAbove = itemRect.bottom <= listRect.top
@@ -100,9 +110,11 @@ export default function Scoreboard({ scores, roundState, activeEmotes = {} }) {
       <h3 className="scoreboard-title">Scores</h3>
       <ul className="scoreboard-list">
         {sorted.map((player, idx) => {
-          const role    = getRole(player.id, roundState)
-          const emoteId = activeEmotes[player.id]
-          const emote   = emoteId ? EMOTES.find(e => e.id === emoteId) : null
+          const role       = getRole(player.id, roundState)
+          const emoteEntry = activeEmotes[player.id]
+          const emoteId    = emoteEntry?.emoteId ?? null
+          const fireKey    = emoteEntry?.fireKey  ?? null
+          const emote      = emoteId ? EMOTES.find(e => e.id === emoteId) : null
 
           return (
             <li
@@ -117,20 +129,155 @@ export default function Scoreboard({ scores, roundState, activeEmotes = {} }) {
             >
               <span className="scoreboard-rank">#{idx + 1}</span>
               {player.avatarId !== undefined && (
-                <div className={`scoreboard-avatar-wrap${emote ? ' emote-active' : ''}`}>
-                  <img
-                    src={AVATARS[player.avatarId]}
-                    alt=""
-                    className={`scoreboard-avatar av-a${player.avatarId + 1}`}
-                    style={{
-                      animationName: 'avatar-bob',
-                      animationDuration: `${BOB_DURATIONS[idx % BOB_DURATIONS.length]}s`,
-                      animationDelay: `${BOB_DELAYS[idx % BOB_DELAYS.length]}s`,
-                      animationTimingFunction: 'ease-in-out',
-                    }}
-                  />
+                <div
+                  key={`wrap-${player.id}-${fireKey ?? 'idle'}`}
+                  className={['scoreboard-avatar-wrap', emote ? 'emote-active' : ''].filter(Boolean).join(' ')}
+                >
+                  {player.avatarId === 8 ? (
+                    <AvatarA9
+                      emoteId={emoteId}
+                      className={`scoreboard-avatar av-a9`}
+                      style={{
+                        animationName: 'avatar-bob',
+                        animationDuration: `${BOB_DURATIONS[idx % BOB_DURATIONS.length]}s`,
+                        animationDelay: `${BOB_DELAYS[idx % BOB_DELAYS.length]}s`,
+                        animationTimingFunction: 'ease-in-out',
+                        animationIterationCount: 'infinite',
+                        animationDirection: 'alternate',
+                      }}
+                    />
+                  ) : player.avatarId === 3 ? (
+                    <AvatarA4
+                      emoteId={emoteId}
+                      className={`scoreboard-avatar av-a4`}
+                      style={{
+                        animationName: 'avatar-bob',
+                        animationDuration: `${BOB_DURATIONS[idx % BOB_DURATIONS.length]}s`,
+                        animationDelay: `${BOB_DELAYS[idx % BOB_DELAYS.length]}s`,
+                        animationTimingFunction: 'ease-in-out',
+                        animationIterationCount: 'infinite',
+                        animationDirection: 'alternate',
+                      }}
+                    />
+                  ) : player.avatarId === 0 ? (
+                    <AvatarA1
+                      emoteId={emoteId}
+                      className={`scoreboard-avatar av-a1`}
+                      style={{
+                        animationName: 'avatar-bob',
+                        animationDuration: `${BOB_DURATIONS[idx % BOB_DURATIONS.length]}s`,
+                        animationDelay: `${BOB_DELAYS[idx % BOB_DELAYS.length]}s`,
+                        animationTimingFunction: 'ease-in-out',
+                        animationIterationCount: 'infinite',
+                        animationDirection: 'alternate',
+                      }}
+                    />
+                  ) : player.avatarId === 1 ? (
+                    <AvatarA2
+                      emoteId={emoteId}
+                      className={`scoreboard-avatar av-a2`}
+                      style={{
+                        animationName: 'avatar-bob',
+                        animationDuration: `${BOB_DURATIONS[idx % BOB_DURATIONS.length]}s`,
+                        animationDelay: `${BOB_DELAYS[idx % BOB_DELAYS.length]}s`,
+                        animationTimingFunction: 'ease-in-out',
+                        animationIterationCount: 'infinite',
+                        animationDirection: 'alternate',
+                      }}
+                    />
+                  ) : player.avatarId === 2 ? (
+                    <AvatarA3
+                      emoteId={emoteId}
+                      className={`scoreboard-avatar av-a3`}
+                      style={{
+                        animationName: 'avatar-bob',
+                        animationDuration: `${BOB_DURATIONS[idx % BOB_DURATIONS.length]}s`,
+                        animationDelay: `${BOB_DELAYS[idx % BOB_DELAYS.length]}s`,
+                        animationTimingFunction: 'ease-in-out',
+                        animationIterationCount: 'infinite',
+                        animationDirection: 'alternate',
+                      }}
+                    />
+                  ) : player.avatarId === 4 ? (
+                    <AvatarA5
+                      emoteId={emoteId}
+                      className={`scoreboard-avatar av-a5`}
+                      style={{
+                        animationName: 'avatar-bob',
+                        animationDuration: `${BOB_DURATIONS[idx % BOB_DURATIONS.length]}s`,
+                        animationDelay: `${BOB_DELAYS[idx % BOB_DELAYS.length]}s`,
+                        animationTimingFunction: 'ease-in-out',
+                        animationIterationCount: 'infinite',
+                        animationDirection: 'alternate',
+                      }}
+                    />
+                  ) : player.avatarId === 5 ? (
+                    <AvatarA6
+                      emoteId={emoteId}
+                      className={`scoreboard-avatar av-a6`}
+                      style={{
+                        animationName: 'avatar-bob',
+                        animationDuration: `${BOB_DURATIONS[idx % BOB_DURATIONS.length]}s`,
+                        animationDelay: `${BOB_DELAYS[idx % BOB_DELAYS.length]}s`,
+                        animationTimingFunction: 'ease-in-out',
+                        animationIterationCount: 'infinite',
+                        animationDirection: 'alternate',
+                      }}
+                    />
+                  ) : player.avatarId === 7 ? (
+                    <AvatarA8
+                      emoteId={emoteId}
+                      className={`scoreboard-avatar av-a8`}
+                      style={{
+                        animationName: 'avatar-bob',
+                        animationDuration: `${BOB_DURATIONS[idx % BOB_DURATIONS.length]}s`,
+                        animationDelay: `${BOB_DELAYS[idx % BOB_DELAYS.length]}s`,
+                        animationTimingFunction: 'ease-in-out',
+                        animationIterationCount: 'infinite',
+                        animationDirection: 'alternate',
+                      }}
+                    />
+                  ) : player.avatarId === 9 ? (
+                    <AvatarA10
+                      emoteId={emoteId}
+                      className={`scoreboard-avatar av-a10`}
+                      style={{
+                        animationName: 'avatar-bob',
+                        animationDuration: `${BOB_DURATIONS[idx % BOB_DURATIONS.length]}s`,
+                        animationDelay: `${BOB_DELAYS[idx % BOB_DELAYS.length]}s`,
+                        animationTimingFunction: 'ease-in-out',
+                        animationIterationCount: 'infinite',
+                        animationDirection: 'alternate',
+                      }}
+                    />
+                  ) : player.avatarId === 10 ? (
+                    <AvatarA11
+                      emoteId={emoteId}
+                      className={`scoreboard-avatar av-a11`}
+                      style={{
+                        animationName: 'avatar-bob',
+                        animationDuration: `${BOB_DURATIONS[idx % BOB_DURATIONS.length]}s`,
+                        animationDelay: `${BOB_DELAYS[idx % BOB_DELAYS.length]}s`,
+                        animationTimingFunction: 'ease-in-out',
+                        animationIterationCount: 'infinite',
+                        animationDirection: 'alternate',
+                      }}
+                    />
+                  ) : (
+                    <img
+                      src={AVATARS[player.avatarId]}
+                      alt=""
+                      className={`scoreboard-avatar av-a${player.avatarId + 1}`}
+                      style={{
+                        animationName: 'avatar-bob',
+                        animationDuration: `${BOB_DURATIONS[idx % BOB_DURATIONS.length]}s`,
+                        animationDelay: `${BOB_DELAYS[idx % BOB_DELAYS.length]}s`,
+                        animationTimingFunction: 'ease-in-out',
+                      }}
+                    />
+                  )}
                   {emote && (
-                    <span key={`${player.id}-${emoteId}`} className="emote-bubble">
+                    <span key={`${player.id}-${fireKey}`} className="emote-bubble">
                       {emote.emoji}
                     </span>
                   )}
