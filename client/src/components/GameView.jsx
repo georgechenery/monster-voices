@@ -15,6 +15,7 @@ export default function GameView({
   roundResults,
   scores,
   isHost,
+  isMidgameWatcher = false,
   onStartNextRound,
   flippedPositions = [],
   quoteFlipKey = 0,
@@ -31,8 +32,8 @@ export default function GameView({
     </div>
   )
 
-  const isSpotter = myPlayer.id === roundState.spotterId
-  const isSpeaker = myPlayer.id === roundState.currentSpeakerId
+  const isSpotter = !isMidgameWatcher && myPlayer.id === roundState.spotterId
+  const isSpeaker = !isMidgameWatcher && myPlayer.id === roundState.currentSpeakerId
 
   return (
     <div className="game-container">
@@ -95,6 +96,7 @@ export default function GameView({
               flippedPositions={flippedPositions}
               cardRevealActive={cardRevealActive}
               activeEmotes={activeEmotes}
+              isMidgameWatcher={isMidgameWatcher}
             />
           )}
         </div>

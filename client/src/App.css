@@ -922,6 +922,19 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* System notification messages */
+.chat-msg-system {
+  align-items: center;
+}
+.chat-msg-bubble-system {
+  background: #2a2a2a;
+  border-color: #555;
+  color: #ccc;
+  font-size: 0.8rem;
+  text-align: center;
+  font-style: italic;
+}
+
 /* My messages: darker background to distinguish from others */
 .chat-msg-mine .chat-msg-bubble {
   background: #e8e8e8;
@@ -3131,10 +3144,12 @@ body {
 }
 
 /* Lobby dev button — tiny, bottom-right of lobby card */
-.btn-lobby-dev {
+.btn-lobby-dev-group {
   position: fixed;
   bottom: 12px;
   right: 14px;
+}
+.btn-lobby-dev {
   background: none;
   border: 1.5px solid rgba(255,255,255,0.3);
   border-radius: 5px;
@@ -3149,6 +3164,34 @@ body {
 .btn-lobby-dev:hover {
   color: rgba(255,255,255,0.75);
   border-color: rgba(255,255,255,0.6);
+}
+.btn-lobby-dev-popup {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  background: #1a1a1a;
+  border: 1.5px solid rgba(255,255,255,0.3);
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 130px;
+}
+.btn-lobby-dev-option {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.45em 0.8em;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, color 0.1s;
+}
+.btn-lobby-dev-option:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
 }
 
 /* ===== AUDIO CONTROLS (bottom-left, always on top) ===== */
@@ -3327,6 +3370,7 @@ body {
 .role-badge-spotter {}
 .role-badge-speaker {}
 .role-badge-waiting {}
+.role-badge-watcher { background: #555; color: #ccc; }
 
 .second-chance-badge {
   font-family: 'MonsterHeadline', sans-serif;
@@ -5956,6 +6000,7 @@ body {
   flex: 0 0 320px;
   overflow: hidden;
   justify-content: flex-start;
+  transform: translateZ(0); /* force compositor layer so overflow:hidden clips 3D flip animation */
 }
 
 /* Grid: fills all available height in the column (flex:1 minus controls),
@@ -5964,6 +6009,7 @@ body {
   flex: 1;
   min-height: 0;
   width: auto;
+  aspect-ratio: 1;        /* grid height = width → square → cards never overflow controls */
   max-width: 100% !important;
 }
 
@@ -7132,6 +7178,31 @@ body {
   .waiting-header {
     gap: 0.35rem;
     flex-wrap: wrap;
+  }
+
+  /* ---- Speaker button: make the grid column scrollable so the button is
+     never pushed off-screen by the 3×3 grid on small phones.
+     The controls section sticks to the bottom of the column so the button
+     is always visible without the user needing to scroll. ---- */
+  .waiting-grid-col {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .waiting-controls {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-deep);
+    padding-bottom: 4px;
+  }
+
+  /* ---- Audio controls: move to bottom-right on mobile so they don't
+     overlap the emote button in the left-anchored chat panel. They sit
+     above the chat toggle button. ---- */
+  .audio-controls {
+    left: auto;
+    right: 1rem;
+    bottom: 4.5rem; /* clears the chat toggle button (bottom: 1.2rem + ~36px height) */
   }
 }
 

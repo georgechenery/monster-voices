@@ -415,6 +415,54 @@ io.on('connection', (socket) => {
       return;
     }
     if (room.phase !== 'waiting') {
+      // Allow joining a classic game already in progress
+      if ((room.phase === 'playing' || room.phase === 'results') && room.mode === 'classic') {
+        if (room.players.length >= 10) {
+          socket.emit('error', { message: 'Room is full (max 10 players).' });
+          return;
+        }
+
+        const takenIds = new Set(room.players.map(p => p.avatarId));
+        let avatarId = 0;
+        for (let i = 0; i < AVATAR_COUNT; i++) {
+          if (!takenIds.has(i)) { avatarId = i; break; }
+        }
+
+        const player = createPlayer(socket.id, playerName, false, avatarId);
+        player.midgameJoin = true;
+        room.players.push(player);
+
+        socket.join(code);
+        socket.data.roomCode = code;
+        socket.data.playerName = playerName;
+
+        // Send enough state for the client to show the current round
+        const round = room.round;
+        const currentSpeakerId = round
+          ? (round.phase === 'second_chance'
+              ? round.secondChancePlayers[round.currentSpeakerIdx]
+              : round.speakingOrder[round.currentSpeakerIdx])
+          : null;
+
+        socket.emit('joined_midgame', {
+          roomCode: code,
+          player,
+          players: room.players,
+          scores: room.players.map(p => ({ id: p.id, name: p.name, score: p.score, avatarId: p.avatarId })),
+          roundState: round ? {
+            spotterId: round.spotterId,
+            shuffledMonsters: round.shuffledMonsters,
+            currentSpeakerId,
+            speakingOrder: round.speakingOrder,
+            phase: round.phase,
+          } : null,
+        });
+
+        socket.to(code).emit('player_joined', { players: room.players });
+        console.log(`${playerName} joined room ${code} mid-game`);
+        return;
+      }
+
       socket.emit('error', { message: 'Game already in progress.' });
       return;
     }
@@ -798,6 +846,13 @@ io.on('connection', (socket) => {
     if (socket.id !== room.hostId) return;
     if (room.phase !== 'results') return;
 
+    // Promote any mid-game joiners to full participants and give them a spotter turn each
+    const midgameJoiners = room.players.filter(p => p.midgameJoin);
+    midgameJoiners.forEach(p => {
+      delete p.midgameJoin;
+      room.totalRounds++;
+    });
+
     room.spotterIndex = (room.spotterIndex + 1) % room.players.length;
 
     startRound(room);
@@ -863,6 +918,7 @@ io.on('connection', (socket) => {
     if (!code || !rooms[code]) return;
 
     const room = rooms[code];
+    const leavingName = socket.data.playerName;
     room.players = room.players.filter(p => p.id !== socket.id);
 
     if (room.players.length === 0) {
@@ -878,8 +934,57 @@ io.on('connection', (socket) => {
       newHostId = room.hostId;
     }
 
-    io.to(code).emit('player_left', { players: room.players, newHostId });
-    console.log(`${socket.data.playerName} left room ${code}`);
+    // Handle mid-round disconnect in classic mode
+    if (room.phase === 'playing' && room.mode === 'classic' && room.round && room.round.phase !== 'ended') {
+      const round = room.round;
+
+      if (socket.id === round.spotterId) {
+        // Spotter left — end the round immediately
+        io.to(code).emit('player_left', { players: room.players, newHostId });
+        io.to(code).emit('notification', {
+          message: `${leavingName} (Spotter) disconnected — round skipped`,
+        });
+        endRound(room, io);
+      } else {
+        // Speaker left — remove from all round tracking
+        let wasCurrent = false;
+
+        if (round.phase === 'speaking') {
+          const idx = round.speakingOrder.indexOf(socket.id);
+          if (idx !== -1) {
+            wasCurrent = idx === round.currentSpeakerIdx;
+            round.speakingOrder.splice(idx, 1);
+            if (idx < round.currentSpeakerIdx) round.currentSpeakerIdx--;
+          }
+        } else if (round.phase === 'second_chance') {
+          const scIdx = round.secondChancePlayers.indexOf(socket.id);
+          if (scIdx !== -1) {
+            wasCurrent = scIdx === round.currentSpeakerIdx;
+            round.secondChancePlayers.splice(scIdx, 1);
+            if (scIdx < round.currentSpeakerIdx) round.currentSpeakerIdx--;
+          }
+          round.speakingOrder = round.speakingOrder.filter(pid => pid !== socket.id);
+        } else {
+          round.speakingOrder = round.speakingOrder.filter(pid => pid !== socket.id);
+        }
+
+        delete round.assignments[socket.id];
+
+        io.to(code).emit('player_left', { players: room.players, newHostId });
+
+        if (wasCurrent) {
+          io.to(code).emit('notification', {
+            message: `${leavingName} disconnected — skipping their turn`,
+          });
+          round.currentSpeakerIdx--; // advanceSpeaker will increment
+          advanceSpeaker(room, io);
+        }
+      }
+    } else {
+      io.to(code).emit('player_left', { players: room.players, newHostId });
+    }
+
+    console.log(`${leavingName} left room ${code}`);
   });
 });
 

@@ -72,6 +72,13 @@ export default function ChatPanel({ messages, onSend, myPlayer, onSendEmote }) {
           <div className="chat-empty">No messages yet</div>
         )}
         {messages.map((msg, i) => {
+          if (msg.system) {
+            return (
+              <div key={i} className="chat-msg chat-msg-system">
+                <div className="chat-msg-bubble chat-msg-bubble-system">{msg.text}</div>
+              </div>
+            )
+          }
           const isMe = msg.playerId === myPlayer?.id
           return (
             <div key={i} className={`chat-msg${isMe ? ' chat-msg-mine' : ''}`}>

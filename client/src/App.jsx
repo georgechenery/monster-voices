@@ -4,6 +4,7 @@ import { playTrack, setDucked, setMusicMuted } from './utils/music'
 import { setSfxMuted } from './utils/sounds'
 import Lobby from './components/Lobby'
 import EmotePreview from './components/EmotePreview'
+import DevGameView from './components/DevGameView'
 import WaitingRoom from './components/WaitingRoom'
 import GameView from './components/GameView'
 import GauntletGame from './components/GauntletGame'
@@ -48,6 +49,9 @@ export default function App() {
   const [flippedPositions, setFlippedPositions] = useState([])
   const [quoteFlipKey, setQuoteFlipKey] = useState(0)
   const [cardRevealActive, setCardRevealActive] = useState(false)
+
+  // Mid-game watcher: joined a game already in progress, watches until next round
+  const [isMidgameWatcher, setIsMidgameWatcher] = useState(false)
 
   // Gauntlet state
   const [gauntletState, setGauntletState] = useState(null)
@@ -170,10 +174,38 @@ export default function App() {
       setChatMessages(prev => [...prev, msg])
     })
 
+    socket.on('joined_midgame', ({ roomCode: code, player, players: ps, scores: sc, roundState: rs }) => {
+      setRoomCode(code)
+      setMyPlayer(player)
+      setPlayers(ps)
+      setIsHost(false)
+      setErrorMsg('')
+      setGameMode('classic')
+      setIsMidgameWatcher(true)
+      setScores(sc)
+      if (rs) {
+        preloadImages((rs.shuffledMonsters || []).map(i => MONSTERS[i]))
+        setRoundState(prev => ({
+          ...prev,
+          spotterId: rs.spotterId,
+          shuffledMonsters: rs.shuffledMonsters || [],
+          currentSpeakerId: rs.currentSpeakerId,
+          speakingOrder: rs.speakingOrder || [],
+          phase: rs.phase || 'speaking',
+        }))
+      }
+      setView('game')
+    })
+
+    socket.on('notification', ({ message }) => {
+      setChatMessages(prev => [...prev, { system: true, text: message, ts: Date.now() }])
+    })
+
     socket.on('game_started', ({ spotterId, shuffledMonsters, quote, speakingOrder, players: ps }) => {
       preloadImages(shuffledMonsters.map(i => MONSTERS[i]))
       setChatMessages([])
       setGameMode('classic')
+      setIsMidgameWatcher(false)
       setPlayers(ps)
       setScores(ps.map(p => ({ id: p.id, name: p.name, score: p.score, avatarId: p.avatarId })))
       setMyMonster(null)
@@ -345,6 +377,8 @@ export default function App() {
       socket.off('chat_message')
       socket.off('room_created')
       socket.off('room_joined')
+      socket.off('joined_midgame')
+      socket.off('notification')
       socket.off('player_joined')
       socket.off('room_updated')
       socket.off('player_left')
@@ -409,6 +443,8 @@ export default function App() {
   let content = null
   if (view === 'dev-emotes') {
     content = <EmotePreview onClose={() => setView('lobby')} />
+  } else if (view === 'dev-game') {
+    content = <DevGameView onClose={() => setView('lobby')} />
   } else if (view === 'lobby') {
     content = (
       <Lobby
@@ -416,6 +452,7 @@ export default function App() {
         onJoinRoom={handleJoinRoom}
         errorMsg={errorMsg}
         onDevEmotes={() => setView('dev-emotes')}
+        onDevGame={() => setView('dev-game')}
       />
     )
   } else if (view === 'waiting') {
@@ -460,6 +497,7 @@ export default function App() {
           roundResults={roundResults}
           scores={scores}
           isHost={isHost}
+          isMidgameWatcher={isMidgameWatcher}
           onStartNextRound={handleStartNextRound}
           socket={socket}
           flippedPositions={flippedPositions}

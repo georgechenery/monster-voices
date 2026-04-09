@@ -9,7 +9,7 @@ import mvLogo from '../assets/brand/mv-logo.png'
 import { playSound, playDealSounds, preloadSounds, playDrumroll, stopDrumroll } from '../utils/sounds'
 import { setGameplayMuted } from '../utils/music'
 
-export default function WaitingPlayerView({ roundState, myMonster, guessResult, scores, players, socket, quoteFlipKey = 0, flippedPositions = [], cardRevealActive = false, activeEmotes = {} }) {
+export default function WaitingPlayerView({ roundState, myMonster, guessResult, scores, players, socket, quoteFlipKey = 0, flippedPositions = [], cardRevealActive = false, activeEmotes = {}, isMidgameWatcher = false }) {
   const { quote, currentSpeakerId, speakerName, waitingForGuess, phase, shuffledMonsters } = roundState
 
   const {
@@ -167,7 +167,10 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
     <div className="waiting-layout">
       {/* Top header bar */}
       <div className="waiting-header">
-        <div className="role-badge role-badge-waiting">You are the Audience</div>
+        {isMidgameWatcher
+          ? <div className="role-badge role-badge-watcher">Watching — You join next round</div>
+          : <div className="role-badge role-badge-waiting">You are the Audience</div>
+        }
         {phase === 'second_chance' && <div className="second-chance-badge">Second Chance Round</div>}
         {!audioUnlocked && (
           <button className="btn btn-unlock-audio" onClick={unlockAudio}>

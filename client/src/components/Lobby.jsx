@@ -4,8 +4,9 @@ import monsterBanner from '../assets/brand/monster-banner.jpg'
 import shuffleupigusLogo from '../assets/brand/shuffleupigus-transparent.png'
 import HowToPlay from './HowToPlay'
 
-export default function Lobby({ onCreateRoom, onJoinRoom, errorMsg, onDevEmotes }) {
+export default function Lobby({ onCreateRoom, onJoinRoom, errorMsg, onDevEmotes, onDevGame }) {
   const [mode, setMode] = useState(null) // null | 'create' | 'join'
+  const [showDevMenu, setShowDevMenu] = useState(false)
   const [playerName, setPlayerName] = useState('')
   const [roomCode, setRoomCode] = useState('')
   const [showHowToPlay, setShowHowToPlay] = useState(false)
@@ -116,7 +117,15 @@ export default function Lobby({ onCreateRoom, onJoinRoom, errorMsg, onDevEmotes 
       {showHowToPlay && <HowToPlay onClose={() => setShowHowToPlay(false)} />}
 
       {onDevEmotes && (
-        <button className="btn-lobby-dev" onClick={onDevEmotes}>DEV</button>
+        <div className="btn-lobby-dev-group">
+          <button className="btn-lobby-dev" onClick={() => setShowDevMenu(m => !m)}>DEV</button>
+          {showDevMenu && (
+            <div className="btn-lobby-dev-popup">
+              <button className="btn-lobby-dev-option" onClick={() => { setShowDevMenu(false); onDevEmotes() }}>Emote Preview</button>
+              <button className="btn-lobby-dev-option" onClick={() => { setShowDevMenu(false); onDevGame() }}>Simulated Game</button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
