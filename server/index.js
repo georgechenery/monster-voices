@@ -396,13 +396,15 @@ io.on('connection', (socket) => {
       round: null,
       gauntlet: null,
       usedMonsterIndices: new Set(),
+      voiceChat: false,
+      voicePeers: new Set(),
     };
 
     socket.join(code);
     socket.data.roomCode = code;
     socket.data.playerName = playerName;
 
-    socket.emit('room_created', { roomCode: code, player, players: [player] });
+    socket.emit('room_created', { roomCode: code, player, players: [player], voiceChat: false });
     console.log(`Room created: ${code} by ${playerName}`);
   });
 
@@ -489,9 +491,19 @@ io.on('connection', (socket) => {
       players: room.players,
       mode: room.mode,
       pendingPigId: room.pendingPigId,
+      voiceChat: room.voiceChat,
     });
     socket.to(code).emit('player_joined', { players: room.players });
     console.log(`${playerName} joined room ${code}`);
+  });
+
+  // Host toggles voice chat mode while in waiting room
+  socket.on('set_voice_mode', ({ voiceChat }) => {
+    const code = socket.data.roomCode;
+    const room = rooms[code];
+    if (!room || socket.id !== room.hostId) return;
+    room.voiceChat = !!voiceChat;
+    io.to(code).emit('voice_mode_updated', { voiceChat: room.voiceChat });
   });
 
   // Host changes game mode while in waiting room
@@ -566,7 +578,8 @@ io.on('connection', (socket) => {
         shuffledMonsters: round.shuffledMonsters,
         quote: round.quote,
         speakingOrder: round.speakingOrder,
-        players: room.players
+        players: room.players,
+        voiceChat: room.voiceChat,
       });
 
       round.speakingOrder.forEach(pid => {
@@ -620,6 +633,7 @@ io.on('connection', (socket) => {
 
       if (socket.id !== expectedSpeaker) return;
       io.to(code).emit('waiting_for_guess', {});
+      if (room.voiceChat) io.to(code).emit('voice_mute_all', {});
     }
   });
 
@@ -759,6 +773,22 @@ io.on('connection', (socket) => {
 
   socket.on('webrtc_signal', ({ targetId, signal }) => {
     io.to(targetId).emit('webrtc_signal', { fromId: socket.id, signal });
+  });
+
+  // Voice chat mesh signaling (separate from speaker WebRTC)
+  socket.on('voice_signal', ({ targetId, signal }) => {
+    io.to(targetId).emit('voice_signal', { fromId: socket.id, signal });
+  });
+
+  // Player clicks "Join Voice" — tell them who's already in, tell others they joined
+  socket.on('voice_joined', () => {
+    const code = socket.data.roomCode;
+    const room = rooms[code];
+    if (!room || !room.voiceChat) return;
+    const currentPeers = [...room.voicePeers];
+    room.voicePeers.add(socket.id);
+    socket.emit('voice_current_peers', { peers: currentPeers });
+    socket.to(code).emit('voice_peer_joined', { peerId: socket.id });
   });
 
   socket.on('ask_peek', () => {
@@ -920,6 +950,7 @@ io.on('connection', (socket) => {
     const room = rooms[code];
     const leavingName = socket.data.playerName;
     room.players = room.players.filter(p => p.id !== socket.id);
+    room.voicePeers?.delete(socket.id);
 
     if (room.players.length === 0) {
       delete rooms[code];

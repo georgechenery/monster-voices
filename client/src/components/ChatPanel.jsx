@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { AVATARS } from '../data/avatars'
 import { EMOTES } from '../data/emotes'
 
-export default function ChatPanel({ messages, onSend, myPlayer, onSendEmote }) {
+export default function ChatPanel({ messages, onSend, myPlayer, onSendEmote, style }) {
   const [text, setText] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [unread, setUnread] = useState(0)
@@ -62,7 +62,7 @@ export default function ChatPanel({ messages, onSend, myPlayer, onSendEmote }) {
   }
 
   const panelContent = (
-    <div className={`chat-panel${mobileOpen ? ' chat-panel-mobile-open' : ''}`}>
+    <div className={`chat-panel${mobileOpen ? ' chat-panel-mobile-open' : ''}`} style={style}>
       <div className="chat-header">
         <span className="chat-title">Chat</span>
         <button className="chat-close-btn" onClick={handleClose} aria-label="Close chat">✕</button>

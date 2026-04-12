@@ -5,6 +5,7 @@ import { setSfxMuted } from './utils/sounds'
 import Lobby from './components/Lobby'
 import EmotePreview from './components/EmotePreview'
 import DevGameView from './components/DevGameView'
+import SeanGameView from './components/SeanGameView'
 import WaitingRoom from './components/WaitingRoom'
 import GameView from './components/GameView'
 import GauntletGame from './components/GauntletGame'
@@ -14,6 +15,29 @@ import cardBack from './assets/monsters/card-back.png'
 
 function preloadImages(srcs) {
   srcs.forEach(src => { const img = new Image(); img.src = src })
+}
+
+// Play three short click tones (voice-chat attention getter before recording plays)
+function playClickCountdown() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const freqs = [660, 660, 880] // two low clicks then a high one
+    freqs.forEach((freq, i) => {
+      const osc  = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      const t = ctx.currentTime + i * 0.4
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12)
+      osc.start(t)
+      osc.stop(t + 0.15)
+    })
+    setTimeout(() => ctx.close(), 2000)
+  } catch (_) {}
 }
 
 export default function App() {
@@ -55,6 +79,10 @@ export default function App() {
 
   // Gauntlet state
   const [gauntletState, setGauntletState] = useState(null)
+
+  // Voice chat
+  const [voiceChat, setVoiceChat]   = useState(false)
+  const [voiceMuted, setVoiceMuted] = useState(false)
 
   // Chat
   const [chatMessages, setChatMessages] = useState([])
@@ -102,7 +130,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    socket.on('room_created', ({ roomCode: code, player, players: ps }) => {
+    socket.on('room_created', ({ roomCode: code, player, players: ps, voiceChat: vc }) => {
       setRoomCode(code)
       setMyPlayer(player)
       setPlayers(ps)
@@ -111,9 +139,10 @@ export default function App() {
       setErrorMsg('')
       setGameMode('classic')
       setSelectedPigId(player.id) // default PIG = host
+      setVoiceChat(vc ?? false)
     })
 
-    socket.on('room_joined', ({ roomCode: code, player, players: ps, mode, pendingPigId }) => {
+    socket.on('room_joined', ({ roomCode: code, player, players: ps, mode, pendingPigId, voiceChat: vc }) => {
       setRoomCode(code)
       setMyPlayer(player)
       setPlayers(ps)
@@ -122,6 +151,7 @@ export default function App() {
       setErrorMsg('')
       setGameMode(mode || 'classic')
       setSelectedPigId(pendingPigId || null)
+      setVoiceChat(vc ?? false)
     })
 
     socket.on('player_joined', ({ players: ps }) => {
@@ -201,7 +231,22 @@ export default function App() {
       setChatMessages(prev => [...prev, { system: true, text: message, ts: Date.now() }])
     })
 
-    socket.on('game_started', ({ spotterId, shuffledMonsters, quote, speakingOrder, players: ps }) => {
+    socket.on('voice_mode_updated', ({ voiceChat: vc }) => {
+      setVoiceChat(vc)
+    })
+
+    socket.on('voice_mute_all', () => {
+      setVoiceMuted(true)
+      playClickCountdown()
+    })
+
+    // After recording plays, unmute voice chat (fallback: 10s after mute)
+    // speaker_changed / second_chance_started also unmute, whichever fires first.
+    const handleAudioReadyForVoice = () => setTimeout(() => setVoiceMuted(false), 10000)
+    socket.on('audio_ready', handleAudioReadyForVoice)
+
+    socket.on('game_started', ({ spotterId, shuffledMonsters, quote, speakingOrder, players: ps, voiceChat: vc }) => {
+      if (vc !== undefined) setVoiceChat(vc)
       preloadImages(shuffledMonsters.map(i => MONSTERS[i]))
       setChatMessages([])
       setGameMode('classic')
@@ -237,6 +282,7 @@ export default function App() {
     })
 
     socket.on('your_turn', ({ quote }) => {
+      setVoiceMuted(false) // speaker's local mic unmuted (voice chat doesn't include speaker anyway)
       setRoundState(prev => ({
         ...prev,
         quote,
@@ -246,6 +292,7 @@ export default function App() {
     })
 
     socket.on('speaker_changed', ({ currentSpeakerId, speakerName }) => {
+      setVoiceMuted(false)
       setRoundState(prev => ({
         ...prev,
         currentSpeakerId,
@@ -279,6 +326,7 @@ export default function App() {
     })
 
     socket.on('second_chance_started', ({ quote, secondChancePlayers }) => {
+      setVoiceMuted(false)
       setGuessResult(null)
       setQuoteFlipKey(k => k + 1)
       setRoundState(prev => ({
@@ -373,6 +421,9 @@ export default function App() {
     })
 
     return () => {
+      socket.off('voice_mode_updated')
+      socket.off('voice_mute_all')
+      socket.off('audio_ready', handleAudioReadyForVoice)
       socket.off('emote')
       socket.off('chat_message')
       socket.off('room_created')
@@ -413,6 +464,11 @@ export default function App() {
     socket.emit('join_room', { roomCode, playerName })
   }
 
+  const handleSetVoiceChat = (enabled) => {
+    setVoiceChat(enabled)
+    socket.emit('set_voice_mode', { voiceChat: enabled })
+  }
+
   const handleSetMode = (mode, pigId) => {
     setGameMode(mode)
     setSelectedPigId(pigId)
@@ -441,10 +497,16 @@ export default function App() {
   }
 
   let content = null
-  if (view === 'dev-emotes') {
+  if (view === 'dev-sean') {
+    content = <SeanGameView onClose={() => setView('lobby')} />
+  } else if (view === 'dev-emotes') {
     content = <EmotePreview onClose={() => setView('lobby')} />
+  } else if (view === 'dev-game-3') {
+    content = <DevGameView playerCount={3}  onClose={() => setView('lobby')} />
+  } else if (view === 'dev-game-5') {
+    content = <DevGameView playerCount={5}  onClose={() => setView('lobby')} />
   } else if (view === 'dev-game') {
-    content = <DevGameView onClose={() => setView('lobby')} />
+    content = <DevGameView playerCount={10} onClose={() => setView('lobby')} />
   } else if (view === 'lobby') {
     content = (
       <Lobby
@@ -452,6 +514,9 @@ export default function App() {
         onJoinRoom={handleJoinRoom}
         errorMsg={errorMsg}
         onDevEmotes={() => setView('dev-emotes')}
+        onDevSean={() => setView('dev-sean')}
+        onDevGame3={() => setView('dev-game-3')}
+        onDevGame5={() => setView('dev-game-5')}
         onDevGame={() => setView('dev-game')}
       />
     )
@@ -468,6 +533,8 @@ export default function App() {
         onStartGame={handleStartGame}
         onSelectAvatar={handleSelectAvatar}
         errorMsg={errorMsg}
+        voiceChat={voiceChat}
+        onSetVoiceChat={handleSetVoiceChat}
       />
     )
   } else if (view === 'game') {
@@ -507,6 +574,8 @@ export default function App() {
           onSendChat={handleSendChat}
           activeEmotes={activeEmotes}
           onSendEmote={handleSendEmote}
+          voiceChat={voiceChat}
+          voiceMuted={voiceMuted}
         />
       )
     }

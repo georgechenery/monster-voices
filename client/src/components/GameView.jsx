@@ -4,6 +4,7 @@ import SpeakerView from './SpeakerView'
 import WaitingPlayerView from './WaitingPlayerView'
 import RoundResults from './RoundResults'
 import ChatPanel from './ChatPanel'
+import VoicePanel from './VoicePanel'
 import monsterBanner from '../assets/brand/monster-banner.jpg'
 
 export default function GameView({
@@ -24,6 +25,8 @@ export default function GameView({
   onSendChat,
   activeEmotes = {},
   onSendEmote,
+  voiceChat = false,
+  voiceMuted = false,
 }) {
   if (!myPlayer || !roundState.spotterId) return (
     <div className="loading-screen">
@@ -35,9 +38,15 @@ export default function GameView({
   const isSpotter = !isMidgameWatcher && myPlayer.id === roundState.spotterId
   const isSpeaker = !isMidgameWatcher && myPlayer.id === roundState.currentSpeakerId
 
+  // Only mute the speaker's mic when they're actually recording, not their whole turn
+  const myVoiceMuted = voiceMuted || (isSpeaker && roundState.speakerIsRecording)
+
   return (
     <div className="game-container">
       <div className="lobby-bg lobby-bg-game" style={{ backgroundImage: `url(${monsterBanner})` }} />
+      {voiceChat && (
+        <VoicePanel isMuted={myVoiceMuted} />
+      )}
       {roundResults && (
         <RoundResults
           reveals={roundResults.reveals}

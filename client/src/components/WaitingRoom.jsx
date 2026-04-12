@@ -55,7 +55,7 @@ function AvatarBubble({ avatarId, size, border, shadow, bobIndex }) {
   )
 }
 
-export default function WaitingRoom({ roomCode, players, myPlayer, isHost, gameMode, selectedPigId, onSetMode, onStartGame, onSelectAvatar, errorMsg }) {
+export default function WaitingRoom({ roomCode, players, myPlayer, isHost, gameMode, selectedPigId, onSetMode, onStartGame, onSelectAvatar, errorMsg, voiceChat, onSetVoiceChat }) {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
 
   const isGauntlet = gameMode === 'gauntlet'
@@ -188,6 +188,34 @@ export default function WaitingRoom({ roomCode, players, myPlayer, isHost, gameM
               )}
             </div>
           )}
+        </div>
+
+        {/* Chat mode selector */}
+        <div className="wr-chat-mode-section">
+          <p className="wr-chat-mode-label">Chat Mode</p>
+          {isHost ? (
+            <div className="wr-mode-toggle">
+              <button
+                className={`wr-mode-btn ${!voiceChat ? 'wr-mode-btn-active' : ''}`}
+                onClick={() => onSetVoiceChat(false)}
+              >
+                Text Chat
+              </button>
+              <button
+                className={`wr-mode-btn ${voiceChat ? 'wr-mode-btn-active' : ''}`}
+                onClick={() => onSetVoiceChat(true)}
+              >
+                🎤 Voice Chat
+              </button>
+            </div>
+          ) : (
+            <div className="wr-mode-display">
+              {voiceChat ? '🎤 Voice Chat' : 'Text Chat'}
+            </div>
+          )}
+          <p className="wr-chat-mode-hint" style={{ visibility: voiceChat ? 'visible' : 'hidden' }}>
+            Everyone except the current speaker can talk. Mics mute while the voice plays.
+          </p>
         </div>
 
         {/* Player list */}

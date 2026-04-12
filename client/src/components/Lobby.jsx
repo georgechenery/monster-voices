@@ -4,7 +4,7 @@ import monsterBanner from '../assets/brand/monster-banner.jpg'
 import shuffleupigusLogo from '../assets/brand/shuffleupigus-transparent.png'
 import HowToPlay from './HowToPlay'
 
-export default function Lobby({ onCreateRoom, onJoinRoom, errorMsg, onDevEmotes, onDevGame }) {
+export default function Lobby({ onCreateRoom, onJoinRoom, errorMsg, onDevEmotes, onDevGame, onDevGame3, onDevGame5, onDevSean }) {
   const [mode, setMode] = useState(null) // null | 'create' | 'join'
   const [showDevMenu, setShowDevMenu] = useState(false)
   const [playerName, setPlayerName] = useState('')
@@ -122,7 +122,10 @@ export default function Lobby({ onCreateRoom, onJoinRoom, errorMsg, onDevEmotes,
           {showDevMenu && (
             <div className="btn-lobby-dev-popup">
               <button className="btn-lobby-dev-option" onClick={() => { setShowDevMenu(false); onDevEmotes() }}>Emote Preview</button>
-              <button className="btn-lobby-dev-option" onClick={() => { setShowDevMenu(false); onDevGame() }}>Simulated Game</button>
+              <button className="btn-lobby-dev-option" onClick={() => { setShowDevMenu(false); onDevSean() }}>Sean's Edit</button>
+              <button className="btn-lobby-dev-option" onClick={() => { setShowDevMenu(false); onDevGame3() }}>Sandbox · 3 players</button>
+              <button className="btn-lobby-dev-option" onClick={() => { setShowDevMenu(false); onDevGame5() }}>Sandbox · 5 players</button>
+              <button className="btn-lobby-dev-option" onClick={() => { setShowDevMenu(false); onDevGame() }}>Sandbox · 10 players</button>
             </div>
           )}
         </div>
