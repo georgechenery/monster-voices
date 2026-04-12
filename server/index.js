@@ -784,9 +784,11 @@ io.on('connection', (socket) => {
   socket.on('voice_joined', () => {
     const code = socket.data.roomCode;
     const room = rooms[code];
+    console.log(`[Voice] voice_joined from ${socket.id}, room=${code}, voiceChat=${room?.voiceChat}`);
     if (!room || !room.voiceChat) return;
     const currentPeers = [...room.voicePeers];
     room.voicePeers.add(socket.id);
+    console.log(`[Voice] sending current_peers=${JSON.stringify(currentPeers)}, broadcasting peer_joined to room`);
     socket.emit('voice_current_peers', { peers: currentPeers });
     socket.to(code).emit('voice_peer_joined', { peerId: socket.id });
   });

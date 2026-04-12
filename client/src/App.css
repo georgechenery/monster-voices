@@ -7672,3 +7672,29 @@ body {
   margin-top: 6px;
   line-height: 1.4;
 }
+
+/* ===== SANDBOX V2 — scoped layout overrides ===== */
+
+/* Left column: kill the 12px bottom margin on the quote card */
+.sbv2-left-col .quote-card-scene {
+  margin-bottom: 0;
+}
+
+/* Left column: tighter chat panel internals */
+.sbv2-chat-wrap .chat-header {
+  padding: 0.2rem 0.6rem;
+}
+.sbv2-chat-wrap .chat-messages {
+  padding: 0.2rem 0.5rem;
+}
+
+/* Center column: collapse the large gaps from waiting-layout classes */
+.sbv2-center .waiting-layout {
+  gap: 4px;
+}
+.sbv2-center .waiting-grid-col {
+  gap: 4px;
+}
+.sbv2-center .waiting-header {
+  padding-bottom: 0;
+}

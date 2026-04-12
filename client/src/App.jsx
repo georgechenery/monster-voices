@@ -5,6 +5,7 @@ import { setSfxMuted } from './utils/sounds'
 import Lobby from './components/Lobby'
 import EmotePreview from './components/EmotePreview'
 import DevGameView from './components/DevGameView'
+import SandboxV2 from './components/SandboxV2'
 import SeanGameView from './components/SeanGameView'
 import WaitingRoom from './components/WaitingRoom'
 import GameView from './components/GameView'
@@ -507,6 +508,8 @@ export default function App() {
     content = <DevGameView playerCount={5}  onClose={() => setView('lobby')} />
   } else if (view === 'dev-game') {
     content = <DevGameView playerCount={10} onClose={() => setView('lobby')} />
+  } else if (view === 'sandbox-v2') {
+    content = <SandboxV2 onClose={() => setView('lobby')} />
   } else if (view === 'lobby') {
     content = (
       <Lobby
@@ -518,6 +521,7 @@ export default function App() {
         onDevGame3={() => setView('dev-game-3')}
         onDevGame5={() => setView('dev-game-5')}
         onDevGame={() => setView('dev-game')}
+        onSandboxV2={() => setView('sandbox-v2')}
       />
     )
   } else if (view === 'waiting') {

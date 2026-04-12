@@ -1,27 +1,49 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import SimplePeer from 'simple-peer'
 
-const ICE_SERVERS = {
+const RTC_CONFIG = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
   ]
 }
 
-/**
- * Manages a peer-to-peer voice mesh.
- *
- * Flow:
- *  1. Player clicks "Join Voice" → joinVoice() gets mic, emits 'voice_joined' to server
- *  2. Server responds with 'voice_current_peers' (who's already in voice)
- *     → we initiate connections to each of them
- *  3. Server broadcasts 'voice_peer_joined' to everyone else
- *     → they wait for our signals; the signal handler creates a non-initiating peer on demand
- *
- * isMuted: when true, disables audio tracks without tearing down connections
- */
+const log = (...args) => console.log('[VoiceChat]', ...args)
+
+function createPC(peerId, localStream, socket, audioElemsRef, pcsRef) {
+  const pc = new RTCPeerConnection(RTC_CONFIG)
+
+  // Add local tracks so the remote side gets our audio
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream))
+
+  // Send ICE candidates to the peer via server
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) {
+      socket.emit('voice_signal', { targetId: peerId, signal: { type: 'candidate', candidate } })
+    }
+  }
+
+  pc.onconnectionstatechange = () => {
+    log('connection state with', peerId, '→', pc.connectionState)
+  }
+
+  // When we receive their audio track, play it
+  pc.ontrack = ({ streams }) => {
+    log('received audio stream from', peerId)
+    let audio = audioElemsRef.current[peerId]
+    if (!audio) {
+      audio = new Audio()
+      audioElemsRef.current[peerId] = audio
+    }
+    audio.srcObject = streams[0]
+    audio.play().catch(err => log('audio.play() blocked:', err.message))
+  }
+
+  pcsRef.current[peerId] = pc
+  return pc
+}
+
 export function useVoiceChat(socket, isMuted) {
-  const peersRef       = useRef({})   // { [peerId]: SimplePeer }
+  const pcsRef         = useRef({})   // { [peerId]: RTCPeerConnection }
   const audioElemsRef  = useRef({})   // { [peerId]: HTMLAudioElement }
   const localStreamRef = useRef(null)
   const isMutedRef     = useRef(isMuted)
@@ -29,121 +51,121 @@ export function useVoiceChat(socket, isMuted) {
   const [joined, setJoined]       = useState(false)
   const [joinError, setJoinError] = useState(null)
 
-  // Keep isMutedRef current and apply immediately to existing tracks
+  // Apply mute changes immediately to existing tracks
   useEffect(() => {
     isMutedRef.current = isMuted
     localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = !isMuted })
   }, [isMuted])
 
-  // ── Peer helpers ─────────────────────────────────────────────────────────────
-
-  const removePeer = useCallback((peerId) => {
-    if (peersRef.current[peerId]) {
-      try { peersRef.current[peerId].destroy() } catch (_) {}
-      delete peersRef.current[peerId]
-    }
+  // ── Close a single peer connection cleanly ────────────────────────────────────
+  const removePC = useCallback((peerId) => {
+    log('removePC', peerId)
+    pcsRef.current[peerId]?.close()
+    delete pcsRef.current[peerId]
     if (audioElemsRef.current[peerId]) {
       audioElemsRef.current[peerId].srcObject = null
       delete audioElemsRef.current[peerId]
     }
   }, [])
 
-  const addPeer = useCallback((peerId, initiator) => {
-    if (peersRef.current[peerId]) return // already exists
-    if (!localStreamRef.current) return
-
-    const peer = new SimplePeer({
-      initiator,
-      stream: localStreamRef.current,
-      trickle: true,
-      config: ICE_SERVERS,
-    })
-
-    peer.on('signal', signal => socket.emit('voice_signal', { targetId: peerId, signal }))
-
-    peer.on('stream', stream => {
-      let audio = audioElemsRef.current[peerId]
-      if (!audio) {
-        audio = new Audio()
-        audio.autoplay = true
-        audioElemsRef.current[peerId] = audio
-      }
-      audio.srcObject = stream
-      audio.play().catch(() => {})
-    })
-
-    peer.on('error', err => console.warn('Voice peer error:', peerId, err.message))
-    peer.on('close', () => removePeer(peerId))
-
-    peersRef.current[peerId] = peer
-  }, [socket, removePeer])
-
-  // ── Socket event handlers (set up once, persist for session) ─────────────────
-
+  // ── Socket signal handler ─────────────────────────────────────────────────────
   useEffect(() => {
-    // Server tells us who is already in voice → we initiate to each
-    const onCurrentPeers = ({ peers }) => {
-      peers.forEach(peerId => addPeer(peerId, true))
+    const onSignal = async ({ fromId, signal }) => {
+      if (!localStreamRef.current) { log('signal arrived but no local stream yet'); return }
+
+      try {
+        if (signal.type === 'offer') {
+          log('received offer from', fromId)
+          // Create a PC as the answerer if we don't have one yet
+          if (!pcsRef.current[fromId]) {
+            createPC(fromId, localStreamRef.current, socket, audioElemsRef, pcsRef)
+          }
+          const pc = pcsRef.current[fromId]
+          await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp))
+          const answer = await pc.createAnswer()
+          await pc.setLocalDescription(answer)
+          socket.emit('voice_signal', { targetId: fromId, signal: { type: 'answer', sdp: answer } })
+          log('sent answer to', fromId)
+
+        } else if (signal.type === 'answer') {
+          log('received answer from', fromId)
+          const pc = pcsRef.current[fromId]
+          if (pc) await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp))
+
+        } else if (signal.type === 'candidate') {
+          const pc = pcsRef.current[fromId]
+          if (pc) await pc.addIceCandidate(new RTCIceCandidate(signal.candidate))
+        }
+      } catch (err) {
+        log('signal handling error:', err.message)
+      }
     }
 
-    // A new player joined voice → they will initiate to us; signal handler handles it
-    // (no action needed — addPeer(initiator=false) happens in onSignal below)
+    // Server tells us who's already in voice → we initiate (create offer)
+    const onCurrentPeers = async ({ peers }) => {
+      log('voice_current_peers →', peers)
+      for (const peerId of peers) {
+        if (!localStreamRef.current) continue
+        if (pcsRef.current[peerId]) continue
+        try {
+          log('initiating offer to', peerId)
+          const pc = createPC(peerId, localStreamRef.current, socket, audioElemsRef, pcsRef)
+          const offer = await pc.createOffer()
+          await pc.setLocalDescription(offer)
+          socket.emit('voice_signal', { targetId: peerId, signal: { type: 'offer', sdp: offer } })
+        } catch (err) {
+          log('offer creation error:', err.message)
+        }
+      }
+    }
+
     const onPeerJoined = ({ peerId }) => {
-      // They will send us an offer signal; onSignal creates the peer reactively
-      void peerId
+      log('voice_peer_joined →', peerId, '(waiting for their offer)')
+      // They will send us an offer — onSignal handles it reactively
     }
 
-    // Incoming signal — create non-initiating peer on demand if needed
-    const onSignal = ({ fromId, signal }) => {
-      if (!localStreamRef.current) return
-      if (!peersRef.current[fromId]) addPeer(fromId, false)
-      try { peersRef.current[fromId]?.signal(signal) } catch (_) {}
-    }
-
+    socket.on('voice_signal',        onSignal)
     socket.on('voice_current_peers', onCurrentPeers)
     socket.on('voice_peer_joined',   onPeerJoined)
-    socket.on('voice_signal',        onSignal)
 
     return () => {
+      socket.off('voice_signal',        onSignal)
       socket.off('voice_current_peers', onCurrentPeers)
       socket.off('voice_peer_joined',   onPeerJoined)
-      socket.off('voice_signal',        onSignal)
     }
-  }, [socket, addPeer])
+  }, [socket])
 
   // ── Join voice chat ───────────────────────────────────────────────────────────
-
   const joinVoice = useCallback(async () => {
     if (joined) return
-    if (!window.isSecureContext) { setJoinError('needs_https'); return }
+    log('joinVoice: requesting mic...')
+    if (!window.isSecureContext) { log('not a secure context'); setJoinError('needs_https'); return }
     if (!navigator.mediaDevices?.getUserMedia) { setJoinError('not_supported'); return }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      log('mic granted, tracks:', stream.getAudioTracks().length)
       stream.getAudioTracks().forEach(t => { t.enabled = !isMutedRef.current })
       localStreamRef.current = stream
       setJoined(true)
       setJoinError(null)
+      log('emitting voice_joined')
       socket.emit('voice_joined')
     } catch (err) {
+      log('mic error:', err.name, err.message)
       const name = err?.name ?? ''
-      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-        setJoinError('denied')
-      } else {
-        setJoinError('error')
-      }
+      setJoinError(name === 'NotAllowedError' || name === 'PermissionDeniedError' ? 'denied' : 'error')
     }
   }, [joined, socket])
 
   // ── Cleanup on unmount ────────────────────────────────────────────────────────
-
   useEffect(() => {
     return () => {
-      Object.keys(peersRef.current).forEach(id => removePeer(id))
+      Object.keys(pcsRef.current).forEach(id => removePC(id))
       localStreamRef.current?.getTracks().forEach(t => t.stop())
       localStreamRef.current = null
     }
-  }, [removePeer])
+  }, [removePC])
 
   return { joined, joinVoice, joinError }
 }

@@ -4,9 +4,11 @@ import { AVATARS } from '../data/avatars'
 import RoundResults from './RoundResults'
 import ChatPanel from './ChatPanel'
 import Scoreboard from './Scoreboard'
+import QuoteCard from './QuoteCard'
 import DevNumberCardFan from './DevNumberCardFan'
 import cardBack from '../assets/monsters/card-back.png'
 import monsterBanner from '../assets/brand/monster-banner.jpg'
+import mvLogo from '../assets/brand/mv-logo.png'
 
 // ── Mock Data ─────────────────────────────────────────────────────────────────
 
@@ -319,11 +321,18 @@ export default function DevGameView({ onClose, playerCount = 10 }) {
   const myAssignment    = assignments[myPlayer.id] || null
   const waitingForGuess = phase === 'guessing' || phase === 'correct' || phase === 'wrong'
   const roleTag         = isSpotter ? 'SPOTTER' : isSpeaker ? 'SPEAKER' : isNext ? 'NEXT UP' : 'AUDIENCE'
-  const mockRoundState  = { spotterId: null, currentSpeakerId: null, speakingOrder: [], waitingForGuess: false, speakerIsRecording: false, speakerStatuses: {} }
+  const devRoundState = {
+    spotterId,
+    currentSpeakerId,
+    speakingOrder,
+    waitingForGuess,
+    speakerIsRecording: phase === 'recording',
+    speakerStatuses,
+  }
 
   return (
     <div className="game-container">
-      <div style={{ position: 'absolute', inset: 0, background: '#fff', zIndex: 0 }} />
+      <div className="lobby-bg lobby-bg-game" style={{ backgroundImage: `url(${monsterBanner})` }} />
 
       {roundResults && (
         <RoundResults reveals={roundResults.reveals} scores={roundResults.scores} isHost={false} onStartNextRound={() => {}} />
@@ -331,9 +340,11 @@ export default function DevGameView({ onClose, playerCount = 10 }) {
 
       <div className="game-chat-layout">
 
-        {/* ── Scoreboard — narrow left column ── */}
-        <div style={{ width: 220, flexShrink: 0, marginTop: '2.8rem', overflowY: 'auto' }}>
-          <Scoreboard scores={scores} roundState={mockRoundState} activeEmotes={{}} />
+        {/* ── Left column: logo + quote card + scoreboard ── */}
+        <div style={{ width: 220, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '0.8rem', gap: 8, overflowY: 'auto' }}>
+          <img src={mvLogo} alt="Monster Voices" style={{ width: 160, objectFit: 'contain' }} />
+          <QuoteCard quote={0} flipKey={0} />
+          <Scoreboard scores={scores} roundState={devRoundState} activeEmotes={{}} />
         </div>
 
         <div className="game-view-wrap" style={{ display: 'flex', flexDirection: 'column' }}>
