@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { MONSTERS } from '../data/monsters'
 import cardBack from '../assets/monsters/card-back.png'
 import { useWebRTC } from '../hooks/useWebRTC'
+import ChatPanel from './ChatPanel'
 import Scoreboard from './Scoreboard'
-import QuoteCard from './QuoteCard'
 import HelpOverlay from './HelpOverlay'
 import mvLogo from '../assets/brand/mv-logo.png'
 import { playSound, playDealSounds, preloadSounds, playDrumroll, stopDrumroll } from '../utils/sounds'
@@ -24,7 +24,7 @@ function buildDisplayBars(history) {
   return Array(pad).fill(0).concat(history).slice(-BAR_COUNT)
 }
 
-export default function SpeakerView({ roundState, myMonster, guessResult, scores, socket, flippedPositions = [], quoteFlipKey = 0, cardRevealActive = false, activeEmotes = {} }) {
+export default function SpeakerView({ roundState, myMonster, guessResult, scores, players = [], socket, flippedPositions = [], quoteFlipKey = 0, cardRevealActive = false, activeEmotes = {}, chatMessages = [], onSendChat, onSendEmote, myPlayer }) {
   const { quote, phase, shuffledMonsters } = roundState
 
   // 'ready' | 'waiting' | 'speaking' | 'review' | 'done'
@@ -43,7 +43,6 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
   const countdownIntervalRef = useRef(null)
   const stageRef = useRef(stage)
 
-  const quoteRef = useRef(null)
   const monsterRef = useRef(null)
   const micRef = useRef(null)
 
@@ -204,6 +203,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
 
   const isHttps = window.isSecureContext
   const micGrantedBefore = localStorage.getItem('mic-granted') === 'true'
+  const spotterName = players.find(p => p.id === roundState.spotterId)?.name ?? '…'
 
   const displayBars = buildDisplayBars(waveformHistory)
 
@@ -216,8 +216,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
       <div className="waiting-header">
         <div className="speaker-instruction-block">
           <h2 className="speaker-instruction-title">Your Turn to Speak!</h2>
-          {phase === 'second_chance' && <div className="second-chance-badge">Second Chance Round</div>}
-          <p className="speaker-instruction-sub">Read the Words of Wisdom in your monster's voice</p>
+          <p className="speaker-instruction-sub">Read the <span className="amber-text">Words of Wisdom</span> in your monster's voice — try to get <strong>{spotterName}</strong> to guess who you are!</p>
         </div>
         <button className="btn-help" onClick={() => setShowHelp(true)}>?</button>
       </div>
@@ -399,21 +398,20 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
           </div>
         </div>
 
-        {/* Right column: logo + quote + scoreboard */}
-        <div className="waiting-right-col">
-          <div className="game-sidebar-logo-wrap">
-            <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />
-          </div>
-          <p className="read-in-voice-label">Read this in your monster's voice:</p>
-          <div ref={quoteRef}><QuoteCard quote={quote} flipKey={quoteFlipKey} /></div>
-          <Scoreboard scores={scores} roundState={roundState} activeEmotes={activeEmotes} />
+      </div>
+
+      {/* Right column spans header + body via CSS grid on waiting-layout */}
+      <div className="waiting-right-col">
+        <div className="game-sidebar-logo-wrap">
+          <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />
         </div>
+        <ChatPanel messages={chatMessages} onSend={onSendChat} myPlayer={myPlayer} onSendEmote={onSendEmote} />
+        <Scoreboard scores={scores} roundState={roundState} activeEmotes={activeEmotes} />
       </div>
 
       {showHelp && (
         <HelpOverlay
           targets={[
-            { ref: quoteRef, label: 'Words of Wisdom', desc: 'Read this quote out loud in your monster\'s voice — be dramatic and convincing!' },
             { ref: monsterRef, label: 'Your Monster', desc: 'The card with the gold border is your secret identity. Don\'t give it away!' },
             { ref: micRef, label: 'Mic Controls', desc: 'Tap "I\'m Ready to Speak" to start. When done, stop the recording and submit — or record again if you made a mistake.' },
           ]}

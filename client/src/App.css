@@ -1,4 +1,5 @@
 /* ===== FONTS ===== */
+
 @font-face {
   font-family: 'MonsterHeadline';
   src: url('./assets/fonts/headline.ttf') format('truetype');
@@ -780,26 +781,46 @@ body {
 /* ===== CHAT LAYOUT ===== */
 /* Flex row: chat panel on left, game content fills the rest */
 .game-chat-layout {
-  display: flex;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  grid-template-rows: auto 1fr;
+  column-gap: 1rem;
   height: 100%;
-  align-items: flex-start; /* panel grows from top, doesn't stretch */
 }
 
 .game-view-wrap {
-  flex: 1;
+  grid-column: 2;
+  grid-row: 1 / 3;
+  display: grid;
+  grid-template-rows: subgrid;
   min-width: 0;
-  height: 100%;
   overflow: hidden;
   position: relative;
-  align-self: stretch;
 }
 
-/* Remove the centred max-width constraint inside the chat layout —
-   the game view should fill all remaining space right up to the grid edge */
+/* In the game chat layout, waiting-layout uses CSS Grid so the right column
+   can span both the header row and body row — logo sits at the very top. */
 .game-view-wrap > .waiting-layout {
   max-width: none;
   margin: 0;
+  display: grid;
+  grid-row: 1 / 3;
+  grid-template-columns: 1fr 320px;
+  grid-template-rows: subgrid;
+  column-gap: 1.5rem;
+}
+.game-view-wrap > .waiting-layout > .waiting-header {
+  grid-column: 1;
+  grid-row: 1;
+}
+.game-view-wrap > .waiting-layout > .waiting-body {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 0;
+}
+.game-view-wrap > .waiting-layout > .waiting-right-col {
+  grid-column: 2;
+  grid-row: 1 / 3;
 }
 
 /* ===== CHAT PANEL ===== */
@@ -813,7 +834,7 @@ body {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: #d0d0d0;
   border: 2.5px solid #000;
   border-radius: var(--radius-lg);
   box-shadow: 4px 4px 0 rgba(0,0,0,0.15);
@@ -3328,7 +3349,6 @@ body {
 
   .game-chat-layout {
     height: 100%;
-    align-items: stretch;
   }
 }
 
@@ -5895,11 +5915,56 @@ body {
   position: relative;
 }
 
-/* Chat panel: wider in-game and offset to align its top with the monster grid */
-.game-chat-layout > .chat-panel {
-  width: 372px;
-  margin-top: 2.8rem; /* clears the waiting-header so top aligns with the monster grid */
+
+/* Left column: card + chat, grid row 2 only so it aligns with the monster grid.
+   Bottom padding clears the fixed audio-controls buttons. */
+.game-left-col {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  gap: 0.5rem;
+  min-height: 0;
+  padding-bottom: 56px;
 }
+
+/* Quote section heading — MonsterHeadline, bold, centred */
+.game-quote-label {
+  margin: 0;
+  font-family: 'MonsterHeadline', sans-serif;
+  font-weight: 900;
+  font-size: 2.2rem;
+  color: #111;
+  line-height: 1.15;
+  text-align: center;
+}
+
+/* Context line — mid-size so it wraps to ~3 lines */
+.game-quote-context {
+  margin: 0;
+  font-family: 'MonsterHeadline', sans-serif;
+  font-weight: 900;
+  font-size: 1.75rem;
+  color: #111;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* Amber inline highlight — used in Monster Spotter header for "Words of Wisdom" */
+.amber-text {
+  color: #f0b429;
+}
+
+/* Amber card border + glow for Monster Spotter view */
+.quote-card-amber-wrap .quote-card-physical {
+  border-color: #f0b429;
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.3),
+    0 8px 24px rgba(0,0,0,0.5),
+    0 0 14px rgba(240, 180, 41, 0.45);
+}
+
 
 /* Game-specific banner: no multiply blend (avoids white=transparent on dark body),
    lower opacity so it's atmospheric but not distracting */
@@ -5995,12 +6060,10 @@ body {
   align-items: center;
 }
 
-/* Sidebar: fixed width sits to the right of the grid. */
+/* Sidebar: width comes from the CSS grid column definition (320px). */
 .waiting-right-col {
-  flex: 0 0 320px;
-  overflow: hidden;
   justify-content: flex-start;
-  transform: translateZ(0); /* force compositor layer so overflow:hidden clips 3D flip animation */
+  overflow: visible;
 }
 
 /* Grid: fills all available height in the column (flex:1 minus controls),
@@ -6148,12 +6211,12 @@ body {
 }
 
 .speaker-instruction-sub {
-  color: #000;
-  opacity: 0.75;
-  background: radial-gradient(ellipse at center, rgba(255,255,255,0.93) 40%, transparent 100%);
-  padding: 0 0.75rem;
-  width: fit-content;
-  align-self: center;
+  font-family: 'MonsterBody', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #111;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .status-active,
@@ -6221,19 +6284,20 @@ body {
   letter-spacing: 0.02em;
 }
 
-/* Center header content over monster grid (not the full layout width).
-   padding-right = right-col width + body gap, so justify-content:center
-   references only the grid column area. */
+
+/* Center header content within its grid column (the monster grid area).
+   position:static so btn-help positions relative to waiting-layout (the grid root). */
 .waiting-header {
   justify-content: center;
-  position: relative;
-  padding-right: calc(320px + 1.5rem);
+  position: static;
 }
-.waiting-header .btn-help {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+.game-view-wrap > .waiting-layout .btn-help {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  right: auto;
+  transform: none;
+  z-index: 900;
 }
 
 .second-chance-badge {
@@ -7049,10 +7113,34 @@ body {
   font-weight: 700;
 }
 
-/* Sidebar content: fixed width so items don't stretch across the whole right area.
-   Placed here (after component-level rules) so specificity wins. */
+/* Sidebar content fills the full column width. */
 .waiting-right-col > * {
-  width: min(260px, 100%);
+  width: 100%;
+}
+
+/* Turn visualiser in left column — fills all space below the card */
+.game-left-fan-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Chat in right column — takes the 65% slot previously held by the fan */
+.waiting-right-col > .chat-panel {
+  flex: 65;
+  min-height: 0;
+}
+.waiting-right-col > .chat-panel .chat-messages {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+/* Scoreboard: 35 % of remaining column height after logo, scrollable */
+.waiting-right-col .scoreboard {
+  position: static;
+  flex: 35;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* =====================================================
@@ -7599,7 +7687,7 @@ body {
 }
 
 .voice-muted-label {
-  color: #f0b429;
+  color: #666;
   font-family: 'MonsterHeadline', sans-serif;
   font-size: 11px;
   font-weight: 700;

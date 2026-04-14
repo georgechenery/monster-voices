@@ -2,14 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { MONSTERS } from '../data/monsters'
 import cardBack from '../assets/monsters/card-back.png'
 import { useWebRTC } from '../hooks/useWebRTC'
+import ChatPanel from './ChatPanel'
 import Scoreboard from './Scoreboard'
-import QuoteCard from './QuoteCard'
 import HelpOverlay from './HelpOverlay'
 import mvLogo from '../assets/brand/mv-logo.png'
 import { playSound, playDealSounds, preloadSounds, playDrumroll, stopDrumroll } from '../utils/sounds'
 import { setGameplayMuted } from '../utils/music'
 
-export default function MonsterSpotterView({ roundState, guessResult, scores, players, socket, flippedPositions = [], quoteFlipKey = 0, cardRevealActive = false, activeEmotes = {} }) {
+export default function MonsterSpotterView({ roundState, guessResult, scores, players, socket, flippedPositions = [], quoteFlipKey = 0, cardRevealActive = false, activeEmotes = {}, chatMessages = [], onSendChat, onSendEmote, myPlayer }) {
   const { shuffledMonsters, quote, waitingForGuess, phase, currentSpeakerId, speakerName } = roundState
   const [clickedPosition, setClickedPosition] = useState(null)
   const [revealPending, setRevealPending] = useState(false)
@@ -17,7 +17,6 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
   const [showHelp, setShowHelp] = useState(false)
   const [countdown, setCountdown] = useState(null)
 
-  const quoteRef = useRef(null)
   const gridRef = useRef(null)
   const statusRef = useRef(null)
   const spotterTimerRef = useRef(null)
@@ -113,8 +112,10 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
     <div className="waiting-layout">
       {/* Header */}
       <div className="waiting-header">
-        <div className="role-badge role-badge-spotter">You are the Monster Spotter</div>
-        {phase === 'second_chance' && <div className="second-chance-badge">Second Chance Round</div>}
+        <div className="speaker-instruction-block">
+          <h2 className="speaker-instruction-title">You are the Monster Spotter</h2>
+          <p className="speaker-instruction-sub">Each player is secretly a monster — listen as they take turns reading the <span className="amber-text">Words of Wisdom</span> in their monster's voice, then tap the one you think they are!</p>
+        </div>
         {!audioUnlocked && (
           <button className="btn btn-unlock-audio" onClick={unlockAudio}>
             Tap to Enable Audio
@@ -223,14 +224,15 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
           </div>
         </div>
 
-        {/* Right column: logo (hides first) + quote + scoreboard */}
-        <div className="waiting-right-col">
-          <div className="game-sidebar-logo-wrap">
-            <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />
-          </div>
-          <div ref={quoteRef}><QuoteCard quote={quote} flipKey={quoteFlipKey} /></div>
-          <Scoreboard scores={scores} roundState={roundState} activeEmotes={activeEmotes} />
+      </div>
+
+      {/* Right column spans header + body via CSS grid on waiting-layout */}
+      <div className="waiting-right-col">
+        <div className="game-sidebar-logo-wrap">
+          <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />
         </div>
+        <ChatPanel messages={chatMessages} onSend={onSendChat} myPlayer={myPlayer} onSendEmote={onSendEmote} />
+        <Scoreboard scores={scores} roundState={roundState} activeEmotes={activeEmotes} />
       </div>
 
       <audio ref={liveAudioRef} autoPlay playsInline style={{ display: 'none' }} />
@@ -239,7 +241,6 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
       {showHelp && (
         <HelpOverlay
           targets={[
-            { ref: quoteRef, label: 'Words of Wisdom', desc: 'The speaker is reading this quote in their monster\'s voice — listen carefully!' },
             { ref: gridRef, label: 'Make Your Guess', desc: 'When it\'s time, tap the monster card you think the speaker is playing as.' },
             { ref: statusRef, label: 'Status', desc: 'Shows when to listen and when to guess. Wait for your cue!' },
           ]}

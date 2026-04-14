@@ -1,12 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import socket from './socket'
 import { playTrack, setDucked, setMusicMuted } from './utils/music'
 import { setSfxMuted } from './utils/sounds'
 import Lobby from './components/Lobby'
 import EmotePreview from './components/EmotePreview'
-import DevGameView from './components/DevGameView'
-import SandboxV2 from './components/SandboxV2'
-import SeanGameView from './components/SeanGameView'
+import Sandbox from './components/Sandbox'
 import WaitingRoom from './components/WaitingRoom'
 import GameView from './components/GameView'
 import GauntletGame from './components/GauntletGame'
@@ -65,7 +63,9 @@ export default function App() {
     phase: 'speaking',
     speakingOrder: [],
     speakerIsRecording: false,
-    speakerStatuses: {}
+    speakerStatuses: {},
+    roundNumber: 1,
+    totalRounds: 1,
   })
   const [guessResult, setGuessResult] = useState(null)
   const [roundResults, setRoundResults] = useState(null)
@@ -87,6 +87,9 @@ export default function App() {
 
   // Chat
   const [chatMessages, setChatMessages] = useState([])
+
+  // Round counter — resets on new room join/create, increments each game_started
+  const roundCountRef = useRef(0)
 
   // Emotes — map of playerId → emoteId for currently-animating players
   const [activeEmotes, setActiveEmotes] = useState({})
@@ -132,6 +135,7 @@ export default function App() {
 
   useEffect(() => {
     socket.on('room_created', ({ roomCode: code, player, players: ps, voiceChat: vc }) => {
+      roundCountRef.current = 0
       setRoomCode(code)
       setMyPlayer(player)
       setPlayers(ps)
@@ -144,6 +148,7 @@ export default function App() {
     })
 
     socket.on('room_joined', ({ roomCode: code, player, players: ps, mode, pendingPigId, voiceChat: vc }) => {
+      roundCountRef.current = 0
       setRoomCode(code)
       setMyPlayer(player)
       setPlayers(ps)
@@ -249,7 +254,10 @@ export default function App() {
     socket.on('game_started', ({ spotterId, shuffledMonsters, quote, speakingOrder, players: ps, voiceChat: vc }) => {
       if (vc !== undefined) setVoiceChat(vc)
       preloadImages(shuffledMonsters.map(i => MONSTERS[i]))
-      setChatMessages([])
+      roundCountRef.current += 1
+      const roundNum = roundCountRef.current
+      // Only clear chat at the very start of a new game (round 1)
+      if (roundNum === 1) setChatMessages([])
       setGameMode('classic')
       setIsMidgameWatcher(false)
       setPlayers(ps)
@@ -273,7 +281,9 @@ export default function App() {
         phase: 'speaking',
         speakingOrder,
         speakerIsRecording: false,
-        speakerStatuses: {}
+        speakerStatuses: {},
+        roundNumber: roundNum,
+        totalRounds: ps.length,
       })
       setView('game')
     })
@@ -316,7 +326,7 @@ export default function App() {
       setGuessResult({ correct, speakerId, speakerName, position, monsterIndex, guessedPosition, points, isSecondChance, wagerOutcomes })
       setScores(newScores)
       setRoundState(prev => {
-        const status = correct ? 'guessed' : isSecondChance ? 'not_guessed' : 'encore'
+        const status = correct ? (isSecondChance ? 'guessed_second' : 'guessed') : isSecondChance ? 'not_guessed' : 'encore'
         return { ...prev, speakerStatuses: { ...prev.speakerStatuses, [speakerId]: status } }
       })
       if (correct || isSecondChance) {
@@ -498,18 +508,10 @@ export default function App() {
   }
 
   let content = null
-  if (view === 'dev-sean') {
-    content = <SeanGameView onClose={() => setView('lobby')} />
+  if (view === 'sandbox') {
+    content = <Sandbox onClose={() => setView('lobby')} />
   } else if (view === 'dev-emotes') {
     content = <EmotePreview onClose={() => setView('lobby')} />
-  } else if (view === 'dev-game-3') {
-    content = <DevGameView playerCount={3}  onClose={() => setView('lobby')} />
-  } else if (view === 'dev-game-5') {
-    content = <DevGameView playerCount={5}  onClose={() => setView('lobby')} />
-  } else if (view === 'dev-game') {
-    content = <DevGameView playerCount={10} onClose={() => setView('lobby')} />
-  } else if (view === 'sandbox-v2') {
-    content = <SandboxV2 onClose={() => setView('lobby')} />
   } else if (view === 'lobby') {
     content = (
       <Lobby
@@ -517,11 +519,7 @@ export default function App() {
         onJoinRoom={handleJoinRoom}
         errorMsg={errorMsg}
         onDevEmotes={() => setView('dev-emotes')}
-        onDevSean={() => setView('dev-sean')}
-        onDevGame3={() => setView('dev-game-3')}
-        onDevGame5={() => setView('dev-game-5')}
-        onDevGame={() => setView('dev-game')}
-        onSandboxV2={() => setView('sandbox-v2')}
+        onSandbox={() => setView('sandbox')}
       />
     )
   } else if (view === 'waiting') {

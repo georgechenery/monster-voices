@@ -2,15 +2,29 @@ import { useState, useEffect, useRef } from 'react'
 import { MONSTERS } from '../data/monsters'
 import cardBack from '../assets/monsters/card-back.png'
 import { useWebRTC } from '../hooks/useWebRTC'
+import ChatPanel from './ChatPanel'
 import Scoreboard from './Scoreboard'
-import QuoteCard from './QuoteCard'
 import HelpOverlay from './HelpOverlay'
 import mvLogo from '../assets/brand/mv-logo.png'
 import { playSound, playDealSounds, preloadSounds, playDrumroll, stopDrumroll } from '../utils/sounds'
 import { setGameplayMuted } from '../utils/music'
 
-export default function WaitingPlayerView({ roundState, myMonster, guessResult, scores, players, socket, quoteFlipKey = 0, flippedPositions = [], cardRevealActive = false, activeEmotes = {}, isMidgameWatcher = false }) {
-  const { quote, currentSpeakerId, speakerName, waitingForGuess, phase, shuffledMonsters } = roundState
+export default function WaitingPlayerView({ roundState, myMonster, guessResult, scores, players, socket, quoteFlipKey = 0, flippedPositions = [], cardRevealActive = false, activeEmotes = {}, isMidgameWatcher = false, myPlayerId, chatMessages = [], onSendChat, onSendEmote, myPlayer }) {
+  const { quote, currentSpeakerId, speakerName, waitingForGuess, phase, shuffledMonsters, speakerStatuses = {}, speakingOrder = [], spotterId } = roundState
+  const spotterName = players.find(p => p.id === spotterId)?.name ?? '…'
+  const myStatus   = speakerStatuses[myPlayerId]
+  const myIdx      = speakingOrder.indexOf(myPlayerId)
+  const curIdx     = speakingOrder.indexOf(currentSpeakerId)
+  const turnsAway  = myIdx >= 0 && curIdx >= 0 ? myIdx - curIdx : -1
+
+  let turnsText = null
+  if (!isMidgameWatcher) {
+    if (myStatus === 'encore' && phase !== 'second_chance') {
+      turnsText = "You'll get a second chance in the Redemption round!"
+    } else if (myStatus !== 'guessed' && myStatus !== 'guessed_second' && myStatus !== 'not_guessed') {
+      if (turnsAway > 0) turnsText = `You're up in ${turnsAway} turn${turnsAway !== 1 ? 's' : ''}!`
+    }
+  }
 
   const {
     liveAudioRef, replayAudioRef,
@@ -30,7 +44,6 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
   const [wagerResult, setWagerResult] = useState(null)
   const [showWagerHelp, setShowWagerHelp] = useState(false)
 
-  const quoteRef = useRef(null)
   const monsterRef = useRef(null)
   const peekRef = useRef(null)
   const mineRevealTimerRef = useRef(null)
@@ -169,9 +182,16 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
       <div className="waiting-header">
         {isMidgameWatcher
           ? <div className="role-badge role-badge-watcher">Watching — You join next round</div>
-          : <div className="role-badge role-badge-waiting">You are the Audience</div>
+          : (
+            <div className="speaker-instruction-block">
+              <h2 className="speaker-instruction-title">{speakerName} is Speaking</h2>
+              <p className="speaker-instruction-sub">
+                {speakerName} is reading the <span className="amber-text">Words of Wisdom</span> as their monster — can <strong>{spotterName}</strong> guess who they are?
+                {turnsText && <> {turnsText}</>}
+              </p>
+            </div>
+          )
         }
-        {phase === 'second_chance' && <div className="second-chance-badge">Second Chance Round</div>}
         {!audioUnlocked && (
           <button className="btn btn-unlock-audio" onClick={unlockAudio}>
             Tap to Enable Audio
@@ -282,7 +302,7 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
                   className={`btn btn-peek ${!waitingForGuess ? 'btn-peek-disabled' : ''}`}
                   onClick={waitingForGuess ? handleAskPeek : undefined}
                 >
-                  Ask to Peek {!waitingForGuess && <span className="peek-soon">(available after they speak)</span>}
+                  Ask to Peek
                 </button>
               )}
               {peekState === 'pending' && (
@@ -365,14 +385,15 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
           </div>
         </div>
 
-        {/* Right column: logo (hides first) + quote card + scoreboard */}
-        <div className="waiting-right-col">
-          <div className="game-sidebar-logo-wrap">
-            <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />
-          </div>
-          <div ref={quoteRef}><QuoteCard quote={quote} flipKey={quoteFlipKey} /></div>
-          <Scoreboard scores={scores} roundState={roundState} activeEmotes={activeEmotes} />
+      </div>
+
+      {/* Right column spans header + body via CSS grid on waiting-layout */}
+      <div className="waiting-right-col">
+        <div className="game-sidebar-logo-wrap">
+          <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />
         </div>
+        <ChatPanel messages={chatMessages} onSend={onSendChat} myPlayer={myPlayer} onSendEmote={onSendEmote} />
+        <Scoreboard scores={scores} roundState={roundState} activeEmotes={activeEmotes} />
       </div>
 
       <audio ref={liveAudioRef} autoPlay playsInline style={{ display: 'none' }} />
@@ -381,7 +402,6 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
       {showHelp && (
         <HelpOverlay
           targets={[
-            { ref: quoteRef, label: 'Words of Wisdom', desc: 'The current speaker is reading this quote in their monster\'s voice.' },
             { ref: monsterRef, label: 'Your Monster', desc: 'The card with the gold border is your secret monster — remember which one it is!' },
             { ref: peekRef, label: 'Ask to Peek', desc: 'After the speaker finishes, you can request to see their monster identity.' },
           ]}
