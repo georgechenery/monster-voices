@@ -7,6 +7,7 @@ import EmotePreview from './components/EmotePreview'
 import Sandbox from './components/Sandbox'
 import WaitingRoom from './components/WaitingRoom'
 import GameView from './components/GameView'
+import VoicePanel from './components/VoicePanel'
 import GauntletGame from './components/GauntletGame'
 import GameOver from './components/GameOver'
 import { MONSTERS } from './data/monsters'
@@ -576,8 +577,6 @@ export default function App() {
           onSendChat={handleSendChat}
           activeEmotes={activeEmotes}
           onSendEmote={handleSendEmote}
-          voiceChat={voiceChat}
-          voiceMuted={voiceMuted}
         />
       )
     }
@@ -589,6 +588,7 @@ export default function App() {
     <>
       {content}
       <div className="audio-controls">
+        {voiceChat && <VoicePanel isMuted={voiceMuted} />}
         <button
           className={`audio-btn${musicMuted ? ' audio-btn-muted' : ''}`}
           onClick={toggleMusic}

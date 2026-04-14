@@ -782,7 +782,7 @@ body {
 /* Flex row: chat panel on left, game content fills the rest */
 .game-chat-layout {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: clamp(180px, 22vw, 320px) 1fr;
   grid-template-rows: auto 1fr;
   column-gap: 1rem;
   height: 100%;
@@ -5923,7 +5923,7 @@ body {
   grid-row: 2;
   display: flex;
   flex-direction: column;
-  width: 320px;
+  width: 100%;
   gap: 0.5rem;
   min-height: 0;
   padding-bottom: 56px;
@@ -7144,6 +7144,81 @@ body {
 }
 
 /* =====================================================
+   RESPONSIVE GAME LAYOUT — three-panel → two-panel → one-panel
+   ===================================================== */
+
+/* 1100px: hide right col (chat/score/logo); monster grid fills full right width */
+@media (max-width: 1100px) {
+  .game-view-wrap > .waiting-layout {
+    grid-template-columns: 1fr;
+  }
+  .waiting-right-col {
+    display: none;
+  }
+}
+
+/* 750px: collapse outer grid into a flex column.
+   Left column becomes a compact horizontal WoW-card strip; turn visualizer hidden.
+   game-view-wrap fills remaining height. */
+@media (max-width: 750px) {
+  .game-chat-layout {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .game-left-col {
+    grid-column: unset;
+    grid-row: unset;
+    width: 100%;
+    flex-direction: row;
+    height: 110px;
+    flex-shrink: 0;
+    padding-bottom: 0;
+    align-items: center;
+    justify-content: flex-start;
+    padding-left: 12px;
+    gap: 0;
+  }
+
+  /* Card wrapper (with or without amber class) fills the strip height */
+  .game-left-col > div:not(.game-left-fan-wrap) {
+    height: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Quote card scales from its height; width comes from landscape aspect-ratio */
+  .game-left-col .quote-card-scene {
+    height: 90%;
+    width: auto;
+    margin: 0;
+  }
+
+  /* Turn visualizer: hidden at this size (priority 4, below WoW card) */
+  .game-left-fan-wrap {
+    display: none;
+  }
+
+  /* game-view-wrap: drop grid context, become a flex child */
+  .game-view-wrap {
+    grid-column: unset;
+    grid-row: unset;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* waiting-layout: plain flex column, no subgrid needed */
+  .game-view-wrap > .waiting-layout {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: unset;
+  }
+}
+
+/* =====================================================
    MOBILE LAYOUT — Game view overrides
    Must come AFTER the B&W redesign block so these
    media-query rules beat the non-queried overrides.
@@ -7607,7 +7682,56 @@ body {
   transform: translate(1px, 1px);
 }
 
-/* ===== VOICE PANEL ===== */
+/* ===== VOICE BUTTON (inline in audio-controls) ===== */
+/* Needs relative positioning for the live-dot overlay */
+.audio-btn {
+  position: relative;
+}
+
+/* Voice status pill — wider than the icon-only buttons, same height */
+.audio-btn-voice-pill {
+  width: auto;
+  padding: 0 10px 0 8px;
+  gap: 5px;
+  border-radius: 999px;
+  font-family: 'MonsterHeadline', sans-serif;
+}
+.audio-btn-voice-text {
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Pulsing red ring when not yet joined — draws attention to click */
+@keyframes voice-join-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231,76,60,0); border-color: #e74c3c; }
+  50%       { box-shadow: 0 0 0 5px rgba(231,76,60,0.35); border-color: #e74c3c; }
+}
+.audio-btn-voice-join {
+  border-color: #e74c3c;
+  color: #e74c3c;
+  animation: voice-join-pulse 1.6s ease-in-out infinite;
+}
+
+/* Small red dot — shown when live (joined & not muted) */
+@keyframes voice-live-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+.voice-live-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e74c3c;
+  animation: voice-live-blink 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ===== OLD VOICE PANEL (removed) ===== */
 .voice-panel {
   position: fixed;
   top: 0;

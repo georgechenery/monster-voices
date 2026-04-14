@@ -5,7 +5,6 @@ import WaitingPlayerView from './WaitingPlayerView'
 import RoundResults from './RoundResults'
 import DevNumberCardFan from './DevNumberCardFan'
 import QuoteCard from './QuoteCard'
-import VoicePanel from './VoicePanel'
 
 export default function GameView({
   myPlayer,
@@ -25,8 +24,6 @@ export default function GameView({
   onSendChat,
   activeEmotes = {},
   onSendEmote,
-  voiceChat = false,
-  voiceMuted = false,
 }) {
   if (!myPlayer || !roundState.spotterId) return (
     <div className="loading-screen">
@@ -39,14 +36,8 @@ export default function GameView({
   const isSpeaker   = !isMidgameWatcher && myPlayer.id === roundState.currentSpeakerId
   const spotterName = isSpotter ? 'you' : (players.find(p => p.id === roundState.spotterId)?.name ?? '…')
 
-  // Only mute the speaker's mic when they're actually recording, not their whole turn
-  const myVoiceMuted = voiceMuted || (isSpeaker && roundState.speakerIsRecording)
-
   return (
     <div className="game-container">
-      {voiceChat && (
-        <VoicePanel isMuted={myVoiceMuted} />
-      )}
       {roundResults && (
         <RoundResults
           reveals={roundResults.reveals}
