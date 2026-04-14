@@ -3530,9 +3530,8 @@ body {
 }
 
 .monster-card-selected {
-  border-color: var(--accent-yellow);
-  box-shadow: 0 0 20px rgba(234,179,8,0.5);
-  transform: scale(1.02);
+  border: 8px solid #60a5fa !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
 }
 
 /* Suspense: guessed card pulses white while result is withheld */
@@ -3716,6 +3715,13 @@ body {
   align-items: center;
   gap: 0.5rem;
 }
+
+/* Per-view stable min-heights so the monster grid never resizes mid-turn.
+   Each threshold covers that view's tallest reachable state:
+   audience = status + peek/wager row + guess-result-mini
+   spotter  = status + countdown                               */
+.waiting-controls-audience { min-height: 140px; }
+.waiting-controls-spotter  { min-height: 90px; }
 
 .waiting-right-col {
   display: flex;
@@ -5011,9 +5017,11 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   margin: 8px 0;
   position: relative;
+  min-height: 160px;
 }
 
 .mic-visualizer-inline {
@@ -5144,6 +5152,22 @@ body {
 .btn-replay:hover {
   background: #fff;
   color: #000;
+}
+
+/* Compact replay button used inline inside rows */
+.btn-replay-sm {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* Status row: guess prompt + inline Listen Again for spotter */
+.status-active-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 /* ===== SPEAKER MONSTER GRID ===== */
@@ -5633,7 +5657,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
 }
 
@@ -5641,6 +5665,7 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--accent-yellow, #f59e0b);
+  white-space: nowrap;
 }
 
 .btn-wager-cancel {
@@ -5654,12 +5679,32 @@ body {
 }
 
 .wager-placed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--text-secondary);
-  padding: 6px 16px;
-  border: 1.5px solid var(--border-glow);
+  color: var(--accent-yellow, #f59e0b);
+  padding: 5px 10px 5px 16px;
+  border: 1.5px solid var(--accent-yellow, #f59e0b);
   border-radius: var(--radius-md);
+}
+
+.btn-wager-change {
+  background: transparent;
+  border: 1.5px solid var(--border-glow);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-family: 'MonsterHeadline', sans-serif;
+  padding: 2px 10px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.btn-wager-change:hover {
+  color: var(--text-primary);
+  border-color: var(--text-primary);
 }
 
 .wager-help-popup {
@@ -5703,15 +5748,63 @@ body {
 }
 
 .wager-result-mini {
-  font-size: 0.9rem;
-  font-weight: 700;
-  padding: 6px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 14px;
   border-radius: var(--radius-md);
   text-align: center;
+  max-width: 340px;
+  line-height: 1.35;
 }
 .wager-result-mini.result-correct { color: #16a34a; background: rgba(22,163,74,0.12); }
 .wager-result-mini.result-wrong   { color: #dc2626; background: rgba(220,38,38,0.1); }
-.wager-result-mini.result-neutral { color: var(--text-secondary); background: rgba(255,255,255,0.08); }
+.wager-result-mini.result-neutral { color: var(--text-secondary); background: rgba(255,255,255,0.08); font-size: 0.78rem; }
+
+/* ===== WAGER ANNOUNCEMENT OVERLAY ===== */
+.wager-announcement {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 600;
+  background: #fff;
+  border-radius: var(--radius-lg, 12px);
+  padding: 14px 28px;
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.01em;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.22);
+  pointer-events: none;
+  animation: wager-announce-pop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.wager-announcement-win  { color: #16a34a; }
+.wager-announcement-lose { color: #dc2626; }
+.wager-announcement-name { color: #111; }
+.wager-announcement-delta { font-size: 1.2rem; margin-left: 3px; }
+@keyframes wager-announce-pop {
+  from { opacity: 0; transform: translateX(-50%) scale(0.85); }
+  to   { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+.wager-returned-bar {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, 60px);
+  z-index: 599;
+  background: #fff;
+  color: #555;
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 0.88rem;
+  padding: 10px 22px;
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+  white-space: nowrap;
+  pointer-events: none;
+  text-align: center;
+}
 
 /* Wager outcome chips — room-wide notice, non-distracting */
 .wager-outcomes {
@@ -6321,8 +6414,8 @@ body {
 }
 
 .monster-card-selected {
-  border-color: #000;
-  box-shadow: 5px 5px 0 rgba(0,0,0,0.45);
+  border-color: #60a5fa;
+  box-shadow: 3px 3px 0 rgba(96,165,250,0.4);
 }
 
 /* Guess pending: B&W pulse instead of white glow */
@@ -6647,8 +6740,13 @@ body {
 }
 
 .wager-placed {
+  color: #b45309;
+  border-color: #b45309;
+}
+
+.btn-wager-change {
   color: #555;
-  border-color: #bbb;
+  border-color: #999;
 }
 
 .wager-note {
@@ -7628,16 +7726,17 @@ body {
 
 .review-label {
   font-family: 'MonsterHeadline', sans-serif;
-  font-size: 1rem;
-  color: #000;
-  align-self: flex-start;
-  margin: 0;
+  font-size: 0.85rem;
+  color: #555;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Review action buttons */
 .review-actions {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
   width: 100%;
 }
 

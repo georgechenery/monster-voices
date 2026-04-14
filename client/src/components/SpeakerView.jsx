@@ -89,9 +89,11 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
       setGameplayMuted(false)
       playSound(guessResult.correct ? 'correct' : 'wrong')
     }, 800)
+    const numOutcomes = guessResult.wagerOutcomes?.length ?? 0
+    const clearDelay = Math.max(800 + 2800, 800 + 1800 + numOutcomes * 1100 + 600)
     const clearTimer = setTimeout(() => {
       setShowResult(false)
-    }, 800 + 2800)
+    }, clearDelay)
     return () => {
       clearTimeout(revealTimer)
       clearTimeout(clearTimer)
@@ -357,7 +359,6 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
               {/* REVIEW — submit or retry */}
               {stage === 'review' && (
                 <div className="mic-recording-card mic-review-card">
-                  <p className="review-label">Happy with that?</p>
                   <div className="mic-waveform mic-waveform-static">
                     {capturedBars.map((amp, i) => (
                       <div
@@ -369,6 +370,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
                   </div>
                   <div className="review-actions">
                     <button className="btn btn-retry-rec" onClick={handleRetry}>↩ Again</button>
+                    <span className="review-label">Happy with that?</span>
                     <button className="btn btn-submit-rec" onClick={handleSubmit}>Submit ✓</button>
                   </div>
                 </div>
@@ -385,15 +387,6 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
                 <div className="timeout-countdown">Auto-submitting in {countdown}s</div>
               )}
 
-              {showResult && guessResult?.wagerOutcomes?.length > 0 && (
-                <div className="wager-outcomes">
-                  {guessResult.wagerOutcomes.map((w, i) => (
-                    <span key={i} className={`wager-outcome-chip ${w.delta > 0 ? 'wager-outcome-win' : 'wager-outcome-lose'}`}>
-                      {w.playerName} wagered {w.delta > 0 ? '+1' : '−1'}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>

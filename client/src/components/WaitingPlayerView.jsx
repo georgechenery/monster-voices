@@ -43,6 +43,7 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
   const [wagerPosition, setWagerPosition] = useState(null)
   const [wagerResult, setWagerResult] = useState(null)
   const [showWagerHelp, setShowWagerHelp] = useState(false)
+  const [showReturnedBar, setShowReturnedBar] = useState(false)
 
   const monsterRef = useRef(null)
   const peekRef = useRef(null)
@@ -78,6 +79,10 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
   useEffect(() => {
     setPeekState('idle')
     setPeekMonster(null)
+    // Reset wager state when the current speaker changes — prevents holdover
+    setWagerState('idle')
+    setWagerPosition(null)
+    setWagerResult(null)
   }, [currentSpeakerId])
 
   useEffect(() => {
@@ -86,6 +91,14 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
     setWagerPosition(null)
     setWagerResult(null)
   }, [quoteFlipKey])
+
+  // Show the "returned" bar for delta=0 wagers for 3 seconds
+  useEffect(() => {
+    if (wagerResult !== 0 || !guessResult) return
+    setShowReturnedBar(true)
+    const t = setTimeout(() => setShowReturnedBar(false), 3000)
+    return () => clearTimeout(t)
+  }, [wagerResult, guessResult])
 
   // Mute music as soon as the speaker's audio arrives (waitingForGuess = true)
   useEffect(() => {
@@ -114,9 +127,11 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
       setGameplayMuted(false)
       playSound(guessResult.correct ? 'correct' : 'wrong')
     }, 800)
+    const numOutcomes = guessResult.wagerOutcomes?.length ?? 0
+    const clearDelay = Math.max(800 + 2800, 800 + 1800 + numOutcomes * 1100 + 600)
     const clearTimer = setTimeout(() => {
       setShowResult(false)
-    }, 800 + 2800)
+    }, clearDelay)
     return () => {
       clearTimeout(revealTimer)
       clearTimeout(clearTimer)
@@ -276,7 +291,7 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
           )}
 
           {/* Controls below grid */}
-          <div className="waiting-controls">
+          <div className="waiting-controls waiting-controls-audience">
             <div className="speaker-status-banner">
               {waitingForGuess ? (
                 <span className="status-guessing">The Monster Spotter is making their guess...</span>
@@ -286,14 +301,6 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
                 </span>
               )}
             </div>
-
-            {replayUrl ? (
-              <button className="btn btn-replay" onClick={handleReplay}>
-                Listen Again
-              </button>
-            ) : waitingForGuess ? (
-              <p className="timeout-no-audio">The speaker ran out of time and didn't record a voice — the Monster Spotter is still taking a guess!</p>
-            ) : null}
 
             <div className="peek-wager-row">
             <div className="peek-section" ref={peekRef}>
@@ -317,6 +324,13 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
               )}
             </div>
 
+            {/* Listen Again — sits between peek and wager */}
+            {replayUrl && (
+              <button className="btn btn-replay btn-replay-sm" onClick={handleReplay}>
+                Listen Again
+              </button>
+            )}
+
             {/* Wager section */}
             <div className="wager-section">
               {wagerState === 'idle' && (
@@ -334,13 +348,16 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
               )}
               {wagerState === 'picking' && (
                 <div className="wager-picking-row">
-                  <span className="wager-picking-prompt">Tap a monster to wager 1 point on it</span>
+                  <span className="wager-picking-prompt">Pick a monster to wager on</span>
                   <button className="btn btn-wager-cancel" onClick={() => setWagerState('idle')}>Cancel</button>
                 </div>
               )}
               {wagerState === 'placed' && wagerPosition !== null && (
                 <div className="wager-placed">
-                  Wager placed on Monster #{wagerPosition + 1}
+                  <span>Wager placed ✓</span>
+                  <button className="btn-wager-change" onClick={() => setWagerState('picking')}>
+                    Change
+                  </button>
                 </div>
               )}
               {showWagerHelp && (
@@ -355,13 +372,17 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
                   <button className="btn-wager-help-close" onClick={() => setShowWagerHelp(false)}>Got it</button>
                 </div>
               )}
-              {showResult && wagerResult !== null && (
-                <div className={`wager-result-mini ${wagerResult > 0 ? 'result-correct' : wagerResult < 0 ? 'result-wrong' : 'result-neutral'}`}>
-                  Wager: {wagerResult > 0 ? '+1 point!' : wagerResult < 0 ? '−1 point' : 'point returned'}
+              {showResult && wagerResult !== null && wagerResult !== 0 && (
+                <div className={`wager-result-mini ${wagerResult > 0 ? 'result-correct' : 'result-wrong'}`}>
+                  {wagerResult > 0 ? 'Your wager: +1 point!' : 'Your wager: −1 point'}
                 </div>
               )}
             </div>
             </div>{/* end peek-wager-row */}
+
+            {!replayUrl && waitingForGuess && (
+              <p className="timeout-no-audio">The speaker ran out of time and didn't record a voice — the Monster Spotter is still taking a guess!</p>
+            )}
 
             {showResult && guessResult && (
               <div className={`guess-result-mini ${guessResult.correct ? 'result-correct' : 'result-wrong'}`}>
@@ -371,15 +392,6 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
                     ? `Wrong! ${guessResult.speakerName} was actually monster #${guessResult.position + 1}`
                     : `Wrong guess — ${guessResult.speakerName} gets a second chance!`
                 }
-              </div>
-            )}
-            {showResult && guessResult?.wagerOutcomes?.length > 0 && (
-              <div className="wager-outcomes">
-                {guessResult.wagerOutcomes.map((w, i) => (
-                  <span key={i} className={`wager-outcome-chip ${w.delta > 0 ? 'wager-outcome-win' : 'wager-outcome-lose'}`}>
-                    {w.playerName} wagered {w.delta > 0 ? '+1' : '−1'}
-                  </span>
-                ))}
               </div>
             )}
           </div>
@@ -407,6 +419,12 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
           ]}
           onClose={() => setShowHelp(false)}
         />
+      )}
+
+      {showReturnedBar && (
+        <div className="wager-returned-bar">
+          You wagered on the same monster as the Monster Spotter — no points gained or lost
+        </div>
       )}
     </div>
   )

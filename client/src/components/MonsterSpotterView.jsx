@@ -56,10 +56,12 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
       setGameplayMuted(false)
       playSound(guessResult.correct ? 'correct' : 'wrong')
     }, 800)
+    const numOutcomes = guessResult.wagerOutcomes?.length ?? 0
+    const clearDelay = Math.max(800 + 2800, 800 + 1800 + numOutcomes * 1100 + 600)
     const clearTimer = setTimeout(() => {
       setShowResult(false)
       setClickedPosition(null)
-    }, 800 + 2800)
+    }, clearDelay)
     return () => {
       clearTimeout(revealTimer)
       clearTimeout(clearTimer)
@@ -176,23 +178,25 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
             })}
           </div>
 
-          <div className="waiting-controls">
+          <div className="waiting-controls waiting-controls-spotter">
             <div className="status-banner" ref={statusRef}>
-              {waitingForGuess
-                ? <span className="status-active">Which monster is <strong>{speakerName}</strong>? Tap to guess!</span>
-                : <span className="status-waiting"><strong>{speakerName}</strong> is speaking — listen carefully!</span>
-              }
+              {waitingForGuess ? (
+                <div className="status-active-row">
+                  <span className="status-active">Which monster is <strong>{speakerName}</strong>? Tap to guess!</span>
+                  {replayUrl && (
+                    <button className="btn btn-replay btn-replay-sm" onClick={handleReplay}>Listen Again</button>
+                  )}
+                </div>
+              ) : (
+                <span className="status-waiting"><strong>{speakerName}</strong> is speaking — listen carefully!</span>
+              )}
             </div>
             {countdown !== null && (
               <div className="timeout-countdown">Time's up in {countdown}s — guess now!</div>
             )}
-            {replayUrl ? (
-              <button className="btn btn-replay" onClick={handleReplay}>
-                Listen Again
-              </button>
-            ) : waitingForGuess ? (
+            {!replayUrl && waitingForGuess && (
               <p className="timeout-no-audio">The speaker ran out of time and didn't record a voice — but you can still take a guess!</p>
-            ) : null}
+            )}
             {showResult && guessResult && (
               <div className={`guess-result-overlay ${guessResult.correct ? 'result-correct' : 'result-wrong'}`}>
                 {guessResult.correct ? (
@@ -209,15 +213,6 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
                         : "They'll get one more chance — 1 point if you get it next time!"}
                     </div>
                   </>
-                )}
-                {guessResult.wagerOutcomes?.length > 0 && (
-                  <div className="wager-outcomes">
-                    {guessResult.wagerOutcomes.map((w, i) => (
-                      <span key={i} className={`wager-outcome-chip ${w.delta > 0 ? 'wager-outcome-win' : 'wager-outcome-lose'}`}>
-                        {w.playerName} wagered {w.delta > 0 ? '+1' : '−1'}
-                      </span>
-                    ))}
-                  </div>
                 )}
               </div>
             )}

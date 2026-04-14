@@ -708,9 +708,12 @@ io.on('connection', (socket) => {
       scores
     });
 
+    // Hold long enough for all wager announcements to display
+    // (client starts at 1800ms, each takes 1100ms, plus 800ms buffer)
+    const advanceDelay = Math.max(3000, 1800 + wagerOutcomes.length * 1100 + 800);
     setTimeout(() => {
       advanceSpeaker(room, io);
-    }, 3000);
+    }, advanceDelay);
   });
 
   socket.on('select_avatar', ({ avatarId }) => {
@@ -852,15 +855,10 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Disallow if already wagered this turn
-    if (round.wagers[socket.id] !== undefined) {
-      socket.emit('wager_rejected', { reason: 'already_placed' });
-      return;
-    }
-
     // Validate position
     if (typeof position !== 'number' || position < 0 || position > 8) return;
 
+    // Allow changing a wager — just overwrite with the new position
     round.wagers[socket.id] = position;
     socket.emit('wager_confirmed', { position });
   });

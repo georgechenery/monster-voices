@@ -310,7 +310,8 @@ export default function App() {
         currentSpeakerId,
         speakerName,
         waitingForGuess: false,
-        speakerIsRecording: false
+        speakerIsRecording: false,
+        phase: 'speaking',
       }))
       setGuessResult(null)
     })
@@ -320,7 +321,7 @@ export default function App() {
     })
 
     socket.on('waiting_for_guess', () => {
-      setRoundState(prev => ({ ...prev, waitingForGuess: true, speakerIsRecording: false }))
+      setRoundState(prev => ({ ...prev, waitingForGuess: true, speakerIsRecording: false, phase: 'guessing' }))
     })
 
     socket.on('guess_result', ({ correct, speakerId, speakerName, position, monsterIndex, guessedPosition, points, scores: newScores, isSecondChance, wagerOutcomes = [] }) => {
@@ -328,7 +329,8 @@ export default function App() {
       setScores(newScores)
       setRoundState(prev => {
         const status = correct ? (isSecondChance ? 'guessed_second' : 'guessed') : isSecondChance ? 'not_guessed' : 'encore'
-        return { ...prev, speakerStatuses: { ...prev.speakerStatuses, [speakerId]: status } }
+        const phase = correct ? 'correct' : 'wrong'
+        return { ...prev, phase, speakerStatuses: { ...prev.speakerStatuses, [speakerId]: status } }
       })
       if (correct || isSecondChance) {
         setTimeout(() => {

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import socket from '../socket'
 import MonsterSpotterView from './MonsterSpotterView'
 import SpeakerView from './SpeakerView'
@@ -25,6 +26,30 @@ export default function GameView({
   activeEmotes = {},
   onSendEmote,
 }) {
+  // Sequential wager announcement state
+  const [announcementIdx, setAnnouncementIdx] = useState(-1)
+
+  // Start cycling through wager outcomes after the drumroll (900ms), one per 1100ms
+  useEffect(() => {
+    if (!guessResult?.wagerOutcomes?.length) {
+      setAnnouncementIdx(-1)
+      return
+    }
+    const t = setTimeout(() => setAnnouncementIdx(0), 1800)
+    return () => clearTimeout(t)
+  }, [guessResult])
+
+  useEffect(() => {
+    if (announcementIdx < 0) return
+    const outcomes = guessResult?.wagerOutcomes ?? []
+    if (announcementIdx >= outcomes.length) {
+      setAnnouncementIdx(-1)
+      return
+    }
+    const t = setTimeout(() => setAnnouncementIdx(i => i + 1), 1100)
+    return () => clearTimeout(t)
+  }, [announcementIdx, guessResult])
+
   if (!myPlayer || !roundState.spotterId) return (
     <div className="loading-screen">
       <div className="loading-spinner">👾</div>
@@ -36,8 +61,19 @@ export default function GameView({
   const isSpeaker   = !isMidgameWatcher && myPlayer.id === roundState.currentSpeakerId
   const spotterName = isSpotter ? 'you' : (players.find(p => p.id === roundState.spotterId)?.name ?? '…')
 
+  const currentAnnouncement = announcementIdx >= 0 ? guessResult?.wagerOutcomes?.[announcementIdx] : null
+
   return (
     <div className="game-container">
+      {currentAnnouncement && (
+        <div className={`wager-announcement wager-announcement-${currentAnnouncement.delta > 0 ? 'win' : 'lose'}`}>
+          <span className="wager-announcement-name">{currentAnnouncement.playerName}</span>
+          {currentAnnouncement.delta > 0 ? ' wagered correctly' : ' wagered incorrectly'}
+          <span className="wager-announcement-delta">
+            {currentAnnouncement.delta > 0 ? ' +1 point' : ' −1 point'}
+          </span>
+        </div>
+      )}
       {roundResults && (
         <RoundResults
           reveals={roundResults.reveals}
