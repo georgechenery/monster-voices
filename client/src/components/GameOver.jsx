@@ -67,7 +67,7 @@ function ClassicOver({ result }) {
 }
 
 function GauntletOver({ result }) {
-  const { outcome, strikes, isPerfect, solvedCount } = result
+  const { outcome, strikes, isPerfect, solvedCount, totalMonsters = 9 } = result
   const isWin = outcome === 'win'
 
   return (
@@ -83,7 +83,7 @@ function GauntletOver({ result }) {
             <h1 className="game-over-title">Perfect Gauntlet!</h1>
             <div className="gauntlet-over-message gauntlet-over-perfect">
               <div className="gauntlet-over-icon">LEGENDARY</div>
-              <p>All 9 monsters guessed with zero strikes.</p>
+              <p>All {totalMonsters} monsters guessed with zero strikes.</p>
               <p>A performance for the ages.</p>
             </div>
           </>
@@ -91,7 +91,7 @@ function GauntletOver({ result }) {
           <>
             <h1 className="game-over-title">Gauntlet Complete!</h1>
             <div className="gauntlet-over-message gauntlet-over-win">
-              <p>All 9 monsters guessed!</p>
+              <p>All {totalMonsters} monsters guessed!</p>
             </div>
           </>
         ) : (
@@ -99,14 +99,14 @@ function GauntletOver({ result }) {
             <h1 className="game-over-title">Gauntlet Failed!</h1>
             <div className="gauntlet-over-message gauntlet-over-lose">
               <p>5 strikes accumulated.</p>
-              <p>{solvedCount} of 9 monsters found.</p>
+              <p>{solvedCount} of {totalMonsters} monsters found.</p>
             </div>
           </>
         )}
 
         <div className="gauntlet-over-stats">
           <div className="gauntlet-over-stat">
-            <span className="gauntlet-over-stat-val">{solvedCount}/9</span>
+            <span className="gauntlet-over-stat-val">{solvedCount}/{totalMonsters}</span>
             <span className="gauntlet-over-stat-label">Monsters Found</span>
           </div>
           <div className="gauntlet-over-stat">

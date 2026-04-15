@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MONSTERS } from '../data/monsters'
+import { GRID_LAYOUTS } from '../data/gridLayouts'
 import cardBack from '../assets/monsters/card-back.png'
 import { useWebRTC } from '../hooks/useWebRTC'
 import ChatPanel from './ChatPanel'
@@ -245,39 +246,49 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
         {/* Monster grid */}
         <div className="waiting-grid-col">
           <div className="monster-grid monster-grid-fill">
-            {Array.from({ length: 9 }, (_, position) => {
-              const monsterIndex = shuffledMonsters[position]
-              const isMine = myMonster && myMonster.position === position
-              const isFlipped = flippedPositions.includes(position)
-              const showReveal = cardRevealActive && !isFlipped
-              const isGuessedPending = revealPending && guessResult && guessResult.guessedPosition === position
-              const isSecondChance = phase === 'second_chance'
-              const showCorrect = showResult && guessResult && guessResult.position === position && (guessResult.correct || isSecondChance)
-              const showWrong = showResult && guessResult && guessResult.guessedPosition === position && !guessResult.correct
-              return (
-                <div key={position} className={`monster-card-flipper${isMine ? ' monster-card-flipper-mine' : ''}`} ref={isMine ? monsterRef : null}>
-                  <div
-                    className={`monster-card-inner ${isFlipped ? 'is-flipped' : ''} ${showReveal ? 'card-reveal-anim' : ''}`}
-                    style={showReveal ? { animationDelay: `${position * 225}ms` } : {}}
-                  >
-                    <div className={[
-                      'monster-card monster-card-face monster-card-front',
-                      isMine && !isGuessedPending && !showCorrect && !showWrong ? 'monster-card-mine' : '',
-                      !isMine && !isGuessedPending && !showCorrect && !showWrong ? 'monster-card-other' : '',
-                      isGuessedPending ? 'monster-card-guess-pending' : '',
-                      showCorrect ? 'monster-card-correct' : '',
-                      showWrong ? 'monster-card-wrong' : '',
-                    ].filter(Boolean).join(' ')}>
-                      <img src={MONSTERS[monsterIndex]} alt={`Monster ${monsterIndex + 1}`} className="monster-img" />
-                      <div className="monster-position-label"></div>
-                    </div>
-                    <div className="monster-card monster-card-face monster-card-back">
-                      <img src={cardBack} alt="Card back" className="monster-img" />
-                    </div>
-                  </div>
+            {(GRID_LAYOUTS[shuffledMonsters.length] ?? GRID_LAYOUTS[9]).reduce((rows, cols, rowIdx) => {
+              const startPos = rows.nextPos
+              rows.nextPos += cols
+              rows.elements.push(
+                <div key={rowIdx} className={`monster-grid-row monster-grid-row-${cols}`}>
+                  {Array.from({ length: cols }, (_, i) => {
+                    const position = startPos + i
+                    const monsterIndex = shuffledMonsters[position]
+                    const isMine = myMonster && myMonster.position === position
+                    const isFlipped = flippedPositions.includes(position)
+                    const showReveal = cardRevealActive && !isFlipped
+                    const isGuessedPending = revealPending && guessResult && guessResult.guessedPosition === position
+                    const isSecondChance = phase === 'second_chance'
+                    const showCorrect = showResult && guessResult && guessResult.position === position && (guessResult.correct || isSecondChance)
+                    const showWrong = showResult && guessResult && guessResult.guessedPosition === position && !guessResult.correct
+                    return (
+                      <div key={position} className={`monster-card-flipper${isMine ? ' monster-card-flipper-mine' : ''}`} ref={isMine ? monsterRef : null}>
+                        <div
+                          className={`monster-card-inner ${isFlipped ? 'is-flipped' : ''} ${showReveal ? 'card-reveal-anim' : ''}`}
+                          style={showReveal ? { animationDelay: `${position * 225}ms` } : {}}
+                        >
+                          <div className={[
+                            'monster-card monster-card-face monster-card-front',
+                            isMine && !isGuessedPending && !showCorrect && !showWrong ? 'monster-card-mine' : '',
+                            !isMine && !isGuessedPending && !showCorrect && !showWrong ? 'monster-card-other' : '',
+                            isGuessedPending ? 'monster-card-guess-pending' : '',
+                            showCorrect ? 'monster-card-correct' : '',
+                            showWrong ? 'monster-card-wrong' : '',
+                          ].filter(Boolean).join(' ')}>
+                            <img src={MONSTERS[monsterIndex]} alt={`Monster ${monsterIndex + 1}`} className="monster-img" />
+                            <div className="monster-position-label"></div>
+                          </div>
+                          <div className="monster-card monster-card-face monster-card-back">
+                            <img src={cardBack} alt="Card back" className="monster-img" />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )
-            })}
+              return rows
+            }, { elements: [], nextPos: 0 }).elements}
           </div>
 
           {/* Mic controls */}

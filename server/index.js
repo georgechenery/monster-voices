@@ -29,19 +29,35 @@ const QUOTE_COUNT = 112
 
 const MONSTER_COUNT = 308
 
-// Pick 9 distinct monster indices that haven't been used in this game yet.
-// Tracks across rounds so no monster repeats within a full game session.
-function pickMonstersForRound(room) {
+// How many monsters appear in the grid per difficulty and player count.
+// Easy = player count (only up to 7 players). Medium splits the difference. Hard = 9.
+const MEDIUM_COUNTS = { 3:6, 4:6, 5:7, 6:8, 7:8, 8:8 };
+
+function getMonsterCount(difficulty, numPlayers) {
+  if (difficulty === 'easy') return numPlayers <= 7 ? numPlayers : 9;
+  if (difficulty === 'medium') return MEDIUM_COUNTS[numPlayers] ?? 9;
+  return 9; // hard
+}
+
+// Gauntlet difficulty: fixed counts independent of player count.
+function getGauntletMonsterCount(difficulty) {
+  if (difficulty === 'easy') return 5;
+  if (difficulty === 'medium') return 7;
+  return 9; // hard
+}
+
+// Pick N distinct monster indices that haven't been used in this game yet.
+function pickMonstersForRound(room, count = 9) {
   const available = []
   for (let i = 0; i < MONSTER_COUNT; i++) {
     if (!room.usedMonsterIndices.has(i)) available.push(i)
   }
-  // Safety reset if somehow the pool runs dry (34+ rounds)
-  if (available.length < 9) {
+  // Safety reset if pool runs dry
+  if (available.length < count) {
     room.usedMonsterIndices = new Set()
-    return shuffle(Array.from({ length: MONSTER_COUNT }, (_, i) => i)).slice(0, 9)
+    return shuffle(Array.from({ length: MONSTER_COUNT }, (_, i) => i)).slice(0, count)
   }
-  const picked = shuffle(available).slice(0, 9)
+  const picked = shuffle(available).slice(0, count)
   picked.forEach(i => room.usedMonsterIndices.add(i))
   return picked
 }
@@ -103,13 +119,14 @@ function startRound(room) {
   const { players, spotterIndex } = room;
   const spotter = players[spotterIndex];
 
-  // Pick 9 unique monsters not yet used this game; assign to grid positions
-  const shuffledMonsters = pickMonstersForRound(room);
+  // Pick N monsters based on difficulty; assign to grid positions 0..N-1
+  const numMonsters = getMonsterCount(room.difficulty || 'hard', players.length);
+  const shuffledMonsters = pickMonstersForRound(room, numMonsters);
 
   // Non-spotter players get positions
   const nonSpotters = players.filter(p => p.id !== spotter.id);
 
-  const positions = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+  const positions = shuffle(Array.from({ length: numMonsters }, (_, i) => i));
   const assignments = {}; // playerId -> { position, monsterIndex }
   nonSpotters.forEach((player, idx) => {
     const position = positions[idx];
@@ -240,8 +257,9 @@ function endRound(room, io) {
 // ---- Gauntlet Mode ----
 
 function startGauntlet(room, pigId) {
-  const shuffledMonsters = pickMonstersForRound(room);
-  const monsterOrder = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8]); // order of positions PIG portrays
+  const numMonsters = getGauntletMonsterCount(room.difficulty || 'hard');
+  const shuffledMonsters = pickMonstersForRound(room, numMonsters);
+  const monsterOrder = shuffle(Array.from({ length: numMonsters }, (_, i) => i));
 
   const spotters = room.players.filter(p => p.id !== pigId);
   const playerColors = {};
@@ -257,6 +275,7 @@ function startGauntlet(room, pigId) {
     pigId,
     shuffledMonsters,
     monsterOrder,
+    numMonsters,
     currentOrderIdx: 0,
     currentPosition,
     currentMonsterIndex,
@@ -324,15 +343,16 @@ function tallyGauntletVotes(room, io) {
         isPerfect: false,
         solvedCount: gauntlet.solvedPositions.length,
       });
-    } else if (gauntlet.solvedPositions.length >= 9) {
-      // Team wins — all 9 guessed
+    } else if (gauntlet.solvedPositions.length >= gauntlet.numMonsters) {
+      // Team wins — all monsters guessed
       gauntlet.phase = 'finished';
       room.phase = 'game_over';
       io.to(room.code).emit('gauntlet_finished', {
         outcome: 'win',
         strikes: gauntlet.strikes,
         isPerfect: gauntlet.strikes === 0,
-        solvedCount: 9,
+        solvedCount: gauntlet.numMonsters,
+        totalMonsters: gauntlet.numMonsters,
       });
     } else if (correct) {
       // Correct — advance to next monster
@@ -347,7 +367,7 @@ function tallyGauntletVotes(room, io) {
 
       io.to(room.code).emit('gauntlet_next_monster', {
         quote: newQuote,
-        monstersLeft: 9 - gauntlet.solvedPositions.length,
+        monstersLeft: gauntlet.numMonsters - gauntlet.solvedPositions.length,
       });
 
       // Tell PIG their new monster privately (reusing 'your_monster' event)
@@ -366,7 +386,7 @@ function tallyGauntletVotes(room, io) {
       io.to(room.code).emit('gauntlet_retry', {
         newQuote,
         strikes: gauntlet.strikes,
-        monstersLeft: 9 - gauntlet.solvedPositions.length,
+        monstersLeft: gauntlet.numMonsters - gauntlet.solvedPositions.length,
       });
     }
   }, 3000);
@@ -389,6 +409,7 @@ io.on('connection', (socket) => {
       players: [player],
       phase: 'waiting',
       mode: 'classic', // 'classic' | 'gauntlet'
+      difficulty: 'hard', // 'easy' | 'medium' | 'hard'
       pendingPigId: null,
       spotterIndex: 0,
       roundsPlayed: 0,
@@ -404,7 +425,7 @@ io.on('connection', (socket) => {
     socket.data.roomCode = code;
     socket.data.playerName = playerName;
 
-    socket.emit('room_created', { roomCode: code, player, players: [player], voiceChat: false });
+    socket.emit('room_created', { roomCode: code, player, players: [player], voiceChat: false, difficulty: 'hard' });
     console.log(`Room created: ${code} by ${playerName}`);
   });
 
@@ -490,6 +511,7 @@ io.on('connection', (socket) => {
       player,
       players: room.players,
       mode: room.mode,
+      difficulty: room.difficulty,
       pendingPigId: room.pendingPigId,
       voiceChat: room.voiceChat,
     });
@@ -516,6 +538,17 @@ io.on('connection', (socket) => {
     room.pendingPigId = pigId || null;
 
     io.to(code).emit('mode_updated', { mode: room.mode, pigId: room.pendingPigId });
+  });
+
+  // Host changes difficulty while in waiting room
+  socket.on('set_difficulty', ({ difficulty }) => {
+    const code = socket.data.roomCode;
+    const room = rooms[code];
+    if (!room || socket.id !== room.hostId) return;
+    if (!['easy', 'medium', 'hard'].includes(difficulty)) return;
+
+    room.difficulty = difficulty;
+    io.to(code).emit('difficulty_updated', { difficulty });
   });
 
   socket.on('start_game', ({ mode, pigId } = {}) => {
@@ -549,6 +582,7 @@ io.on('connection', (socket) => {
         players: room.players,
         strikes: 0,
         solvedPositions: [],
+        totalMonsters: g.numMonsters,
       });
 
       // Tell PIG their first monster privately (reusing 'your_monster')
@@ -633,7 +667,10 @@ io.on('connection', (socket) => {
 
       if (socket.id !== expectedSpeaker) return;
       io.to(code).emit('waiting_for_guess', {});
-      if (room.voiceChat) io.to(code).emit('voice_mute_all', {});
+      if (room.voiceChat) {
+        const speaker = room.players.find(p => p.id === socket.id);
+        io.to(code).emit('voice_mute_all', { speakerName: speaker?.name ?? '', reason: 'listening' });
+      }
     }
   });
 
@@ -732,8 +769,18 @@ io.on('connection', (socket) => {
   socket.on('speaker_recording', () => {
     const code = socket.data.roomCode;
     const room = rooms[code];
-    if (!room || !room.round) return;
+    if (!room) return;
+
+    // Broadcast recording status to all others
     socket.to(code).emit('speaker_recording');
+
+    if (room.mode === 'gauntlet' && room.voiceChat) {
+      // Mute voice chat for everyone (pig recording → feedback risk)
+      const speaker = room.players.find(p => p.id === socket.id);
+      io.to(code).emit('voice_mute_all', { speakerName: speaker?.name ?? '', reason: 'recording' });
+    } else if (room.mode !== 'gauntlet' && !room.round) {
+      return; // classic mode guard
+    }
   });
 
   // Spotter timed out — skip the guess and advance
@@ -855,8 +902,9 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Validate position
-    if (typeof position !== 'number' || position < 0 || position > 8) return;
+    // Validate position against actual grid size
+    const gridSize = round.shuffledMonsters.length;
+    if (typeof position !== 'number' || position < 0 || position >= gridSize) return;
 
     // Allow changing a wager — just overwrite with the new position
     round.wagers[socket.id] = position;

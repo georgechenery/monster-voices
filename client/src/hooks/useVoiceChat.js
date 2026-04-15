@@ -51,10 +51,11 @@ export function useVoiceChat(socket, isMuted) {
   const [joined, setJoined]       = useState(false)
   const [joinError, setJoinError] = useState(null)
 
-  // Apply mute changes immediately to existing tracks
+  // Apply mute changes immediately — outgoing tracks AND incoming audio elements
   useEffect(() => {
     isMutedRef.current = isMuted
     localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = !isMuted })
+    Object.values(audioElemsRef.current).forEach(audio => { audio.muted = isMuted })
   }, [isMuted])
 
   // ── Close a single peer connection cleanly ────────────────────────────────────

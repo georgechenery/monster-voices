@@ -51,6 +51,7 @@ export default function App() {
   // Game mode
   const [gameMode, setGameMode] = useState('classic') // 'classic' | 'gauntlet'
   const [selectedPigId, setSelectedPigId] = useState(null)
+  const [difficulty, setDifficulty] = useState('hard') // 'easy' | 'medium' | 'hard'
 
   // Classic game state
   const [myMonster, setMyMonster] = useState(null) // { position, monsterIndex }
@@ -83,8 +84,13 @@ export default function App() {
   const [gauntletState, setGauntletState] = useState(null)
 
   // Voice chat
-  const [voiceChat, setVoiceChat]   = useState(false)
-  const [voiceMuted, setVoiceMuted] = useState(false)
+  const [voiceChat, setVoiceChat]     = useState(false)
+  const [voiceMuted, setVoiceMuted]   = useState(false)
+  const [voiceStatusMsg, setVoiceStatusMsg] = useState(null)
+
+  // Refs for socket handlers that need current state without re-registering
+  const gauntletStateRef = useRef(null)
+  const playersRef = useRef([])
 
   // Chat
   const [chatMessages, setChatMessages] = useState([])
@@ -118,6 +124,15 @@ export default function App() {
     setSfxMuted(sfxMuted)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Keep refs current for socket handlers
+  useEffect(() => { gauntletStateRef.current = gauntletState }, [gauntletState])
+  useEffect(() => { playersRef.current = players }, [players])
+
+  // Clear status message when voice unmutes
+  useEffect(() => {
+    if (!voiceMuted) setVoiceStatusMsg(null)
+  }, [voiceMuted])
+
   // Music track selection: theme during active gameplay, menus everywhere else
   useEffect(() => {
     const inActiveGame = view === 'game' && roundResults === null
@@ -135,7 +150,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    socket.on('room_created', ({ roomCode: code, player, players: ps, voiceChat: vc }) => {
+    socket.on('room_created', ({ roomCode: code, player, players: ps, voiceChat: vc, difficulty: diff }) => {
       roundCountRef.current = 0
       setRoomCode(code)
       setMyPlayer(player)
@@ -146,9 +161,10 @@ export default function App() {
       setGameMode('classic')
       setSelectedPigId(player.id) // default PIG = host
       setVoiceChat(vc ?? false)
+      setDifficulty(diff ?? 'hard')
     })
 
-    socket.on('room_joined', ({ roomCode: code, player, players: ps, mode, pendingPigId, voiceChat: vc }) => {
+    socket.on('room_joined', ({ roomCode: code, player, players: ps, mode, pendingPigId, voiceChat: vc, difficulty: diff }) => {
       roundCountRef.current = 0
       setRoomCode(code)
       setMyPlayer(player)
@@ -157,6 +173,7 @@ export default function App() {
       setView('waiting')
       setErrorMsg('')
       setGameMode(mode || 'classic')
+      setDifficulty(diff ?? 'hard')
       setSelectedPigId(pendingPigId || null)
       setVoiceChat(vc ?? false)
     })
@@ -242,14 +259,32 @@ export default function App() {
       setVoiceChat(vc)
     })
 
-    socket.on('voice_mute_all', () => {
-      setVoiceMuted(true)
-      playClickCountdown()
+    socket.on('difficulty_updated', ({ difficulty: diff }) => {
+      setDifficulty(diff)
     })
 
-    // After recording plays, unmute voice chat (fallback: 10s after mute)
-    // speaker_changed / second_chance_started also unmute, whichever fires first.
-    const handleAudioReadyForVoice = () => setTimeout(() => setVoiceMuted(false), 10000)
+    socket.on('voice_mute_all', ({ speakerName = '', reason = 'recording' } = {}) => {
+      setVoiceMuted(true)
+      playClickCountdown()
+      if (speakerName) {
+        setVoiceStatusMsg(
+          reason === 'listening'
+            ? `${speakerName} – voice chat muted (listening)`
+            : `${speakerName} – voice chat muted (recording)`
+        )
+      }
+    })
+
+    // After recording plays, switch notification to "listening" then unmute after 10s
+    const handleAudioReadyForVoice = () => {
+      const gs = gauntletStateRef.current
+      const ps = playersRef.current
+      if (gs) {
+        const pigName = ps.find(p => p.id === gs.pigId)?.name ?? ''
+        if (pigName) setVoiceStatusMsg(`${pigName} – voice chat muted (listening)`)
+      }
+      setTimeout(() => setVoiceMuted(false), 10000)
+    }
     socket.on('audio_ready', handleAudioReadyForVoice)
 
     socket.on('game_started', ({ spotterId, shuffledMonsters, quote, speakingOrder, players: ps, voiceChat: vc }) => {
@@ -363,7 +398,7 @@ export default function App() {
     })
 
     // ---- Gauntlet game events ----
-    socket.on('gauntlet_started', ({ pigId, shuffledMonsters, quote, playerColors, players: ps, strikes, solvedPositions }) => {
+    socket.on('gauntlet_started', ({ pigId, shuffledMonsters, quote, playerColors, players: ps, strikes, solvedPositions, totalMonsters }) => {
       preloadImages(shuffledMonsters.map(i => MONSTERS[i]))
       setChatMessages([])
       setGameMode('gauntlet')
@@ -380,7 +415,7 @@ export default function App() {
         phase: 'speaking',
         votes: {},
         lastResult: null,
-        monstersLeft: 9,
+        totalMonsters: totalMonsters ?? 9,
       })
       setView('game')
     })
@@ -429,8 +464,8 @@ export default function App() {
       } : prev)
     })
 
-    socket.on('gauntlet_finished', ({ outcome, strikes, isPerfect, solvedCount }) => {
-      setFinalResult({ mode: 'gauntlet', outcome, strikes, isPerfect, solvedCount })
+    socket.on('gauntlet_finished', ({ outcome, strikes, isPerfect, solvedCount, totalMonsters }) => {
+      setFinalResult({ mode: 'gauntlet', outcome, strikes, isPerfect, solvedCount, totalMonsters: totalMonsters ?? 9 })
       setView('game_over')
     })
 
@@ -449,6 +484,7 @@ export default function App() {
       socket.off('player_left')
       socket.off('error')
       socket.off('mode_updated')
+      socket.off('difficulty_updated')
       socket.off('game_started')
       socket.off('your_monster')
       socket.off('your_turn')
@@ -481,6 +517,11 @@ export default function App() {
   const handleSetVoiceChat = (enabled) => {
     setVoiceChat(enabled)
     socket.emit('set_voice_mode', { voiceChat: enabled })
+  }
+
+  const handleSetDifficulty = (diff) => {
+    setDifficulty(diff)
+    socket.emit('set_difficulty', { difficulty: diff })
   }
 
   const handleSetMode = (mode, pigId) => {
@@ -540,10 +581,13 @@ export default function App() {
         errorMsg={errorMsg}
         voiceChat={voiceChat}
         onSetVoiceChat={handleSetVoiceChat}
+        difficulty={difficulty}
+        onSetDifficulty={handleSetDifficulty}
       />
     )
   } else if (view === 'game') {
     if (gameMode === 'gauntlet' && gauntletState) {
+      const pigName = players.find(p => p.id === gauntletState?.pigId)?.name ?? ''
       content = (
         <GauntletGame
           myPlayer={myPlayer}
@@ -556,6 +600,11 @@ export default function App() {
           onSendChat={handleSendChat}
           activeEmotes={activeEmotes}
           onSendEmote={handleSendEmote}
+          onReplayStart={() => {
+            setVoiceMuted(true)
+            if (pigName) setVoiceStatusMsg(`${pigName} – voice chat muted (listening)`)
+          }}
+          onReplayEnd={() => setVoiceMuted(false)}
         />
       )
     } else {
@@ -590,38 +639,45 @@ export default function App() {
     <>
       {content}
       <div className="audio-controls">
-        {voiceChat && <VoicePanel isMuted={voiceMuted} />}
-        <button
-          className={`audio-btn${musicMuted ? ' audio-btn-muted' : ''}`}
-          onClick={toggleMusic}
-          title={musicMuted ? 'Unmute music' : 'Mute music'}
-        >
-          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-            <path d="M9 3v12.5a3.5 3.5 0 1 1-2-3.17V7l8-2v6.5a3.5 3.5 0 1 1-2-3.17V3L9 3z"/>
-            {musicMuted && <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>}
-          </svg>
-        </button>
-        <button
-          className={`audio-btn${sfxMuted ? ' audio-btn-muted' : ''}`}
-          onClick={toggleSfx}
-          title={sfxMuted ? 'Unmute sounds' : 'Mute sounds'}
-        >
-          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-            {sfxMuted ? (
-              <>
-                <path d="M13 3L7 8H3v8h4l6 5V3z" opacity="0.5"/>
-                <line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-                <line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-              </>
-            ) : (
-              <>
-                <path d="M13 3L7 8H3v8h4l6 5V3z"/>
-                <path d="M17.5 7.5a7 7 0 0 1 0 9" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
-                <path d="M20 5a11 11 0 0 1 0 14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
-              </>
-            )}
-          </svg>
-        </button>
+        <div className="audio-row audio-row-main">
+          <button
+            className={`audio-btn${musicMuted ? ' audio-btn-muted' : ''}`}
+            onClick={toggleMusic}
+            title={musicMuted ? 'Unmute music' : 'Mute music'}
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+              <path d="M9 3v12.5a3.5 3.5 0 1 1-2-3.17V7l8-2v6.5a3.5 3.5 0 1 1-2-3.17V3L9 3z"/>
+              {musicMuted && <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>}
+            </svg>
+          </button>
+          <button
+            className={`audio-btn${sfxMuted ? ' audio-btn-muted' : ''}`}
+            onClick={toggleSfx}
+            title={sfxMuted ? 'Unmute sounds' : 'Mute sounds'}
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+              {sfxMuted ? (
+                <>
+                  <path d="M13 3L7 8H3v8h4l6 5V3z" opacity="0.5"/>
+                  <line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                  <line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                </>
+              ) : (
+                <>
+                  <path d="M13 3L7 8H3v8h4l6 5V3z"/>
+                  <path d="M17.5 7.5a7 7 0 0 1 0 9" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
+                  <path d="M20 5a11 11 0 0 1 0 14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
+                </>
+              )}
+            </svg>
+          </button>
+        </div>
+        {voiceChat && (
+          <div className="audio-row audio-row-voice">
+            {voiceStatusMsg && <div className="voice-status-toast">{voiceStatusMsg}</div>}
+            <VoicePanel isMuted={voiceMuted} />
+          </div>
+        )}
       </div>
     </>
   )

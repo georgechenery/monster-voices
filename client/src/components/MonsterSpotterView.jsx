@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MONSTERS } from '../data/monsters'
+import { GRID_LAYOUTS } from '../data/gridLayouts'
 import cardBack from '../assets/monsters/card-back.png'
 import { useWebRTC } from '../hooks/useWebRTC'
 import ChatPanel from './ChatPanel'
@@ -135,47 +136,56 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
         {/* Monster grid — fills all available height */}
         <div className="waiting-grid-col">
           <div className="monster-grid monster-grid-fill" ref={gridRef}>
-            {Array.from({ length: 9 }, (_, position) => {
-              const monsterIndex = shuffledMonsters[position]
-              const isFlipped = flippedPositions.includes(position)
-              const isClickable = !isFlipped && waitingForGuess && clickedPosition === null
-              const isSelected = clickedPosition === position && !revealPending && !showResult
-              const isGuessedPending = revealPending && clickedPosition === position
-              const isSecondChance = phase === 'second_chance'
-              const wasCorrect = guessResult && guessResult.position === position
-              const wasGuessed = guessResult && guessResult.guessedPosition === position
-              const showCorrect = showResult && wasCorrect && (guessResult.correct || isSecondChance)
-              const showWrong = showResult && wasGuessed && !guessResult.correct
-
-              const showReveal = cardRevealActive && !isFlipped
-              return (
-                <div key={position} className={`monster-card-flipper${isClickable ? ' monster-card-flipper-clickable' : ''}`}>
-                  <div
-                    className={`monster-card-inner ${isFlipped ? 'is-flipped' : ''} ${showReveal ? 'card-reveal-anim' : ''}`}
-                    style={showReveal ? { animationDelay: `${position * 225}ms` } : {}}
-                  >
-                    <div
-                      className={[
-                        'monster-card monster-card-face monster-card-front',
-                        isClickable ? 'monster-card-clickable' : '',
-                        isSelected ? 'monster-card-selected' : '',
-                        isGuessedPending ? 'monster-card-guess-pending' : '',
-                        showCorrect ? 'monster-card-correct' : '',
-                        showWrong ? 'monster-card-wrong' : '',
-                        !isFlipped && !waitingForGuess && clickedPosition === null && !revealPending && !showResult ? 'monster-card-disabled' : ''
-                      ].filter(Boolean).join(' ')}
-                      onClick={() => handleGuess(position)}
-                    >
-                      <img src={MONSTERS[monsterIndex]} alt={`Monster ${monsterIndex + 1}`} className="monster-img" />
-                      <div className="monster-position-label">#{position + 1}</div>
-                    </div>
-                    <div className="monster-card monster-card-face monster-card-back">
-                      <img src={cardBack} alt="Card back" className="monster-img" />
-                    </div>
-                  </div>
+            {(GRID_LAYOUTS[shuffledMonsters.length] ?? GRID_LAYOUTS[9]).reduce((rows, cols, rowIdx) => {
+              const startPos = rows.nextPos
+              rows.nextPos += cols
+              rows.elements.push(
+                <div key={rowIdx} className={`monster-grid-row monster-grid-row-${cols}`}>
+                  {Array.from({ length: cols }, (_, i) => {
+                    const position = startPos + i
+                    const monsterIndex = shuffledMonsters[position]
+                    const isFlipped = flippedPositions.includes(position)
+                    const isClickable = !isFlipped && waitingForGuess && clickedPosition === null
+                    const isSelected = clickedPosition === position && !revealPending && !showResult
+                    const isGuessedPending = revealPending && clickedPosition === position
+                    const isSecondChance = phase === 'second_chance'
+                    const wasCorrect = guessResult && guessResult.position === position
+                    const wasGuessed = guessResult && guessResult.guessedPosition === position
+                    const showCorrect = showResult && wasCorrect && (guessResult.correct || isSecondChance)
+                    const showWrong = showResult && wasGuessed && !guessResult.correct
+                    const showReveal = cardRevealActive && !isFlipped
+                    return (
+                      <div key={position} className={`monster-card-flipper${isClickable ? ' monster-card-flipper-clickable' : ''}`}>
+                        <div
+                          className={`monster-card-inner ${isFlipped ? 'is-flipped' : ''} ${showReveal ? 'card-reveal-anim' : ''}`}
+                          style={showReveal ? { animationDelay: `${position * 225}ms` } : {}}
+                        >
+                          <div
+                            className={[
+                              'monster-card monster-card-face monster-card-front',
+                              isClickable ? 'monster-card-clickable' : '',
+                              isSelected ? 'monster-card-selected' : '',
+                              isGuessedPending ? 'monster-card-guess-pending' : '',
+                              showCorrect ? 'monster-card-correct' : '',
+                              showWrong ? 'monster-card-wrong' : '',
+                              !isFlipped && !waitingForGuess && clickedPosition === null && !revealPending && !showResult ? 'monster-card-disabled' : ''
+                            ].filter(Boolean).join(' ')}
+                            onClick={() => handleGuess(position)}
+                          >
+                            <img src={MONSTERS[monsterIndex]} alt={`Monster ${monsterIndex + 1}`} className="monster-img" />
+                            <div className="monster-position-label">#{position + 1}</div>
+                          </div>
+                          <div className="monster-card monster-card-face monster-card-back">
+                            <img src={cardBack} alt="Card back" className="monster-img" />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )
-            })}
+              return rows
+            }, { elements: [], nextPos: 0 }).elements}
           </div>
 
           <div className="waiting-controls waiting-controls-spotter">

@@ -66,16 +66,36 @@ const MOCK_CHAT = [
 
 // ── Data helpers ───────────────────────────────────────────────────────────────
 
-function buildGameData(n) {
+const MEDIUM_COUNTS = { 3: 6, 4: 6, 5: 7, 6: 8, 7: 8, 8: 8 }
+
+function getMonsterCount(difficulty, numPlayers) {
+  if (difficulty === 'easy')   return numPlayers
+  if (difficulty === 'medium') return MEDIUM_COUNTS[numPlayers] ?? 9
+  return 9
+}
+
+// Fixed positions for each slot index so monsters always land in sensible spots
+const POSITION_ORDER = [4, 0, 8, 2, 6, 1, 3, 5, 7]
+
+function buildGameData(n, difficulty = 'hard') {
   const players       = ALL_PLAYERS.slice(0, n)
   const spotterId     = 'p0'
   const speakingOrder = players.slice(1).map(p => p.id)
-  const assignments   = {}
-  speakingOrder.forEach(pid => { assignments[pid] = ALL_ASSIGNMENTS[pid] })
-  const shuffledMonsters = [...BASE_BOARD]
+  const numMonsters   = getMonsterCount(difficulty, n)
+
+  // Assign each speaker a position — only use positions that fit within the grid
+  const validPositions = POSITION_ORDER.filter(p => p < numMonsters)
+  const assignments = {}
+  speakingOrder.forEach((pid, i) => {
+    const position = validPositions[i % validPositions.length]
+    assignments[pid] = { position, monsterIndex: ALL_ASSIGNMENTS[pid].monsterIndex }
+  })
+
+  const shuffledMonsters = BASE_BOARD.slice(0, numMonsters)
   Object.values(assignments).forEach(({ position, monsterIndex }) => {
     shuffledMonsters[position] = monsterIndex
   })
+
   const scores = players.map(p => ({ id: p.id, name: p.name, score: p.score, avatarId: p.avatarId }))
   return { players, spotterId, speakingOrder, assignments, shuffledMonsters, scores }
 }
@@ -104,7 +124,7 @@ function buildState({ players, spotterId, speakingOrder, assignments, shuffledMo
     guessResult = {
       correct: false,
       position: assignment.position, monsterIndex: assignment.monsterIndex,
-      guessedPosition: (assignment.position + 2) % 9,
+      guessedPosition: (assignment.position + 2) % shuffledMonsters.length,
     }
   }
 
@@ -136,7 +156,7 @@ function buildState({ players, spotterId, speakingOrder, assignments, shuffledMo
 
 // ── Floating dev controls ──────────────────────────────────────────────────────
 
-function DevControls({ playerCount, setPlayerCount, viewAsIdx, setViewAsIdx, speakerIdx, setSpeakerIdx, phase, setPhase, roundNum, setRoundNum, players, speakingOrder, onClose, roleTag }) {
+function DevControls({ playerCount, setPlayerCount, viewAsIdx, setViewAsIdx, speakerIdx, setSpeakerIdx, phase, setPhase, roundNum, setRoundNum, difficulty, setDifficulty, players, speakingOrder, onClose, roleTag }) {
   const [pos,     setPos]  = useState({ right: 14, bottom: 14 })
   const dragging  = useRef(false)
   const dragStart = useRef(null)
@@ -193,7 +213,32 @@ function DevControls({ playerCount, setPlayerCount, viewAsIdx, setViewAsIdx, spe
       <div>
         <div style={{ color: '#555', fontSize: 8, marginBottom: 4, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'monospace' }}>Players</div>
         <div style={{ display: 'flex', gap: 4 }}>
-          {[3, 5, 7, 9].map(n => btn(n, playerCount === n, () => { setPlayerCount(n); setViewAsIdx(0); setSpeakerIdx(0) }))}
+          {[3, 5, 7, 9].map(n => btn(n, playerCount === n, () => {
+            setPlayerCount(n); setViewAsIdx(0); setSpeakerIdx(0)
+            if (n > 8) setDifficulty(d => d === 'easy' || d === 'medium' ? 'hard' : d)
+            else if (n > 7) setDifficulty(d => d === 'easy' ? 'medium' : d)
+          }))}
+        </div>
+      </div>
+
+      {/* Difficulty */}
+      <div>
+        <div style={{ color: '#555', fontSize: 8, marginBottom: 4, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'monospace' }}>Difficulty</div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {[
+            { value: 'easy',   label: 'Easy',   disabled: playerCount > 7 },
+            { value: 'medium', label: 'Medium',  disabled: playerCount > 8 },
+            { value: 'hard',   label: 'Hard',    disabled: false           },
+          ].map(({ value, label, disabled }) => (
+            <button key={value} onClick={() => !disabled && setDifficulty(value)} style={{
+              fontSize: 10, padding: '2px 7px', cursor: disabled ? 'not-allowed' : 'pointer', borderRadius: 3,
+              background: difficulty === value ? '#f0b429' : '#1a1a1a',
+              color:      difficulty === value ? '#000' : disabled ? '#333' : '#888',
+              border: `1px solid ${difficulty === value ? '#f0b429' : '#2a2a2a'}`,
+              fontWeight: difficulty === value ? 700 : 400, fontFamily: 'monospace',
+              opacity: disabled ? 0.4 : 1,
+            }}>{label}</button>
+          ))}
         </div>
       </div>
 
@@ -244,8 +289,9 @@ export default function Sandbox({ onClose }) {
   const [speakerIdx,  setSpeakerIdx]  = useState(0)
   const [phase,       setPhase]       = useState('thinking')
   const [roundNum,    setRoundNum]    = useState(1)
+  const [difficulty,  setDifficulty]  = useState('hard')
 
-  const gameData = buildGameData(playerCount)
+  const gameData = buildGameData(playerCount, difficulty)
   const { players, spotterId, speakingOrder, scores } = gameData
 
   // Clamp indices whenever player count changes
@@ -361,6 +407,7 @@ export default function Sandbox({ onClose }) {
         speakerIdx={safeSpeakerIdx} setSpeakerIdx={setSpeakerIdx}
         phase={phase}               setPhase={setPhase}
         roundNum={safeRoundNum}     setRoundNum={setRoundNum}
+        difficulty={difficulty}     setDifficulty={setDifficulty}
         players={players}
         speakingOrder={speakingOrder}
         onClose={onClose}

@@ -2,8 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { MONSTERS } from '../data/monsters'
 import cardBack from '../assets/monsters/card-back.png'
 import { useWebRTC } from '../hooks/useWebRTC'
+import { GRID_LAYOUTS } from '../data/gridLayouts'
+import ChatPanel from './ChatPanel'
 import QuoteCard from './QuoteCard'
 import mvLogo from '../assets/brand/mv-logo.png'
+import { setGameplayMuted } from '../utils/music'
 
 const MIC_ERRORS = {
   needs_https: "You need a secure connection (https://). Change the URL and accept the browser warning.",
@@ -20,10 +23,9 @@ function buildDisplayBars(history) {
   return Array(pad).fill(0).concat(history).slice(-BAR_COUNT)
 }
 
-export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket }) {
-  const { shuffledMonsters, quote, phase, solvedPositions, strikes, votes, playerColors, lastResult, monstersLeft } = gauntletState
+export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket, chatMessages = [], onSendChat, onSendEmote, myPlayer }) {
+  const { shuffledMonsters, phase, solvedPositions, strikes, votes, playerColors, lastResult } = gauntletState
 
-  // 'ready' | 'waiting' | 'speaking' | 'review' | 'done'
   const [stage, setStage] = useState('ready')
   const [micError, setMicError] = useState(null)
   const [capturedBars, setCapturedBars] = useState([])
@@ -37,9 +39,9 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
 
   const { startMic, stopForReview, stopMicOnly, uploadBlob, stopMicAndUpload, micLevel, waveformHistory } = useWebRTC(socket, true, false, null)
 
-  // Reset when a new monster or retry arrives
   useEffect(() => {
     if (phase === 'speaking') {
+      setGameplayMuted(false)
       stopMicOnly()
       setStage('ready')
       setMicError(null)
@@ -48,14 +50,18 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
       clearTimeout(turnAlertTimerRef.current)
       setShowTurnAlert(true)
       turnAlertTimerRef.current = setTimeout(() => setShowTurnAlert(false), 3000)
+      return () => {
+        setGameplayMuted(false)
+        clearTimeout(turnAlertTimerRef.current)
+      }
+    } else {
+      setGameplayMuted(false)
     }
     return () => clearTimeout(turnAlertTimerRef.current)
   }, [phase, quoteFlipKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keep stageRef current so timer callbacks can read latest stage
   useEffect(() => { stageRef.current = stage }, [stage])
 
-  // Cancel turn timer when player self-submits
   useEffect(() => {
     if (stage === 'review' || stage === 'done') {
       clearTimeout(pigTimerRef.current)
@@ -64,7 +70,6 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
     }
   }, [stage])
 
-  // Speaker timeout: starts from beginning of turn, 25s then 10s countdown
   useEffect(() => {
     if (phase !== 'speaking') return
     clearTimeout(pigTimerRef.current)
@@ -79,11 +84,8 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
           clearInterval(countdownIntervalRef.current)
           setCountdown(null)
           const currentStage = stageRef.current
-          if (currentStage === 'speaking') {
-            stopMicAndUpload()
-          } else if (currentStage === 'waiting') {
-            stopMicOnly()
-          }
+          if (currentStage === 'speaking') stopMicAndUpload()
+          else if (currentStage === 'waiting') stopMicOnly()
           if (currentStage !== 'review' && currentStage !== 'done') {
             socket.emit('done_speaking')
             setStage('done')
@@ -100,6 +102,7 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
   }, [phase, quoteFlipKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleReady = async () => {
+    setGameplayMuted(true)
     setMicError(null)
     setStage('waiting')
     const result = await startMic()
@@ -108,6 +111,7 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
       setStage('speaking')
       socket.emit('speaker_recording')
     } else {
+      setGameplayMuted(false)
       setStage('ready')
       setMicError(result)
     }
@@ -127,6 +131,7 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
   }
 
   const handleRetry = () => {
+    setGameplayMuted(false)
     stopMicOnly()
     capturedBlobRef.current = null
     setCapturedBars([])
@@ -137,66 +142,81 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
   const isHttps = window.isSecureContext
   const micGrantedBefore = localStorage.getItem('mic-granted') === 'true'
   const displayBars = buildDisplayBars(waveformHistory)
-  const solvedCount = solvedPositions.length
-
   const alertActive = showTurnAlert && stage === 'ready'
+
+  const numMonsters = shuffledMonsters.length
+
+  // Get all voter colors per position for display
+  const spotterEntries = Object.entries(votes || {})
 
   return (
     <div className={`waiting-layout${alertActive ? ' turn-active' : ''}`}>
-
       {/* Header */}
       <div className="waiting-header">
-        <div className="role-badge role-badge-pig">You are PIG</div>
-        <GauntletStrikeBar strikes={strikes} />
+        <div className="speaker-instruction-block">
+          <h2 className="speaker-instruction-title">You are the Speaker</h2>
+          <p className="speaker-instruction-sub">Read the <span className="amber-text">Words of Wisdom</span> in each monster's voice — the team will vote on which one you're playing as!</p>
+        </div>
       </div>
 
       <div className="waiting-body">
         {/* Monster grid */}
         <div className="waiting-grid-col">
           <div className="monster-grid monster-grid-fill">
-            {Array.from({ length: 9 }, (_, position) => {
-              const monsterIndex = shuffledMonsters[position]
-              const isSolved = solvedPositions.includes(position)
-              const isMine = myMonster && myMonster.position === position && !isSolved
+            {(GRID_LAYOUTS[numMonsters] ?? GRID_LAYOUTS[9]).reduce((rows, cols, rowIdx) => {
+              const startPos = rows.nextPos
+              rows.nextPos += cols
+              rows.elements.push(
+                <div key={rowIdx} className={`monster-grid-row monster-grid-row-${cols}`}>
+                  {Array.from({ length: cols }, (_, i) => {
+                    const position = startPos + i
+                    const monsterIndex = shuffledMonsters[position]
+                    const isSolved = solvedPositions.includes(position)
+                    const isMine = myMonster && myMonster.position === position && !isSolved
 
-              // Show votes from spotters on PIG's grid too (for entertainment)
-              const votersHere = Object.entries(votes || {})
-                .filter(([, pos]) => pos === position)
-                .map(([pid]) => playerColors[pid])
+                    const votersHere = spotterEntries
+                      .filter(([, pos]) => pos === position)
+                      .map(([pid]) => playerColors[pid])
 
-              // Result highlighting
-              const showCorrect = lastResult && lastResult.correct && lastResult.position === position
-              const showWrong = lastResult && !lastResult.correct && lastResult.guessedPosition === position
+                    const showCorrect = lastResult && lastResult.correct && lastResult.position === position
+                    const showWrong = lastResult && !lastResult.correct && lastResult.guessedPosition === position
 
-              return (
-                <div key={position} className={`monster-card-flipper${isMine ? ' monster-card-flipper-mine' : ''}`}>
-                  <div className={`monster-card-inner ${isSolved ? 'is-flipped' : ''}`}>
-                    <div className={[
-                      'monster-card monster-card-face monster-card-front',
-                      isMine ? 'monster-card-mine' : '',
-                      showCorrect ? 'monster-card-correct' : '',
-                      showWrong ? 'monster-card-wrong' : '',
-                    ].filter(Boolean).join(' ')}>
-                      <img src={MONSTERS[monsterIndex]} alt={`Monster ${monsterIndex + 1}`} className="monster-img" />
-                      {votersHere.length > 0 && (
-                        <div className="vote-dots">
-                          {votersHere.map((color, i) => (
-                            <span key={i} className="vote-dot" style={{ background: color }} />
-                          ))}
+                    return (
+                      <div key={position} className={`monster-card-flipper${isMine ? ' monster-card-flipper-mine' : ''}`}>
+                        <div className={`monster-card-inner ${isSolved ? 'is-flipped' : ''}`}>
+                          <div className={[
+                            'monster-card monster-card-face monster-card-front',
+                            isMine ? 'monster-card-mine' : '',
+                            showCorrect ? 'monster-card-correct' : '',
+                            showWrong ? 'monster-card-wrong' : '',
+                          ].filter(Boolean).join(' ')}>
+                            <img src={MONSTERS[monsterIndex]} alt={`Monster ${monsterIndex + 1}`} className="monster-img" />
+                            {votersHere.length > 0 && (
+                              <div className="vote-dots">
+                                {votersHere.map((color, idx) => (
+                                  <span key={idx} className="vote-dot" style={{ background: color }} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className="monster-card monster-card-face monster-card-back">
+                            <img src={cardBack} alt="Card back" className="monster-img" />
+                          </div>
                         </div>
-                      )}
-                    </div>
-                    <div className="monster-card monster-card-face monster-card-back">
-                      <img src={cardBack} alt="Card back" className="monster-img" />
-                    </div>
-                  </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )
-            })}
+              return rows
+            }, { elements: [], nextPos: 0 }).elements}
           </div>
 
           {/* Mic controls */}
-          <div className="waiting-controls">
+          <div className="waiting-controls rtg-pig-controls">
+            <div className="rtg-mobile-wow">
+              <QuoteCard quote={gauntletState.quote} flipKey={quoteFlipKey} />
+            </div>
             <div className="mic-action-section">
               {!isHttps && (
                 <div className="mic-error">
@@ -217,13 +237,12 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
 
               {phase === 'speaking' && (
                 <>
-                  {/* READY */}
                   {stage === 'ready' && (
                     <>
                       {alertActive && (
                         <div className="turn-popup">
-                          <div className="turn-popup-title">Your Turn to Speak!</div>
-                          <div className="turn-popup-sub">Read the Words of Wisdom card in your monster's voice</div>
+                          <div className="turn-popup-title">Next Monster!</div>
+                          <div className="turn-popup-sub">Read the Words of Wisdom in your monster's voice</div>
                           <div className="turn-popup-arrow">↓</div>
                         </div>
                       )}
@@ -238,7 +257,6 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
                     </>
                   )}
 
-                  {/* WAITING */}
                   {stage === 'waiting' && (
                     <div className="mic-waiting">
                       <div className="mic-waiting-dots"><span /><span /><span /></div>
@@ -246,7 +264,6 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
                     </div>
                   )}
 
-                  {/* SPEAKING */}
                   {stage === 'speaking' && (
                     <div className="mic-recording-card">
                       <div className="mic-recording-header">
@@ -264,10 +281,8 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
                     </div>
                   )}
 
-                  {/* REVIEW */}
                   {stage === 'review' && (
                     <div className="mic-recording-card mic-review-card">
-                      <p className="review-label">Happy with that?</p>
                       <div className="mic-waveform mic-waveform-static">
                         {capturedBars.map((amp, i) => (
                           <div key={i} className="waveform-bar"
@@ -276,12 +291,12 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
                       </div>
                       <div className="review-actions">
                         <button className="btn btn-retry-rec" onClick={handleRetry}>↩ Again</button>
+                        <span className="review-label">Happy with that?</span>
                         <button className="btn btn-submit-rec" onClick={handleSubmit}>Submit ✓</button>
                       </div>
                     </div>
                   )}
 
-                  {/* DONE */}
                   {stage === 'done' && (
                     <div className="done-message">Uploading... spotters are listening!</div>
                   )}
@@ -300,25 +315,9 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
           <div className="game-sidebar-logo-wrap">
             <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />
           </div>
-          <div className="gauntlet-progress">
-            <div className="gauntlet-progress-label">Monsters Found</div>
-            <div className="gauntlet-progress-count">{solvedCount} <span>/ 9</span></div>
-          </div>
-          <QuoteCard quote={quote} flipKey={quoteFlipKey} />
+          <ChatPanel messages={chatMessages} onSend={onSendChat} myPlayer={myPlayer} onSendEmote={onSendEmote} />
         </div>
       </div>
-    </div>
-  )
-}
-
-function GauntletStrikeBar({ strikes }) {
-  return (
-    <div className="gauntlet-strike-bar">
-      {Array.from({ length: 5 }, (_, i) => (
-        <div key={i} className={`strike-token ${i < strikes ? 'strike-token-active' : ''}`}>
-          ✕
-        </div>
-      ))}
     </div>
   )
 }

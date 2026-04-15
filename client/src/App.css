@@ -798,29 +798,16 @@ body {
   position: relative;
 }
 
-/* In the game chat layout, waiting-layout uses CSS Grid so the right column
-   can span both the header row and body row — logo sits at the very top. */
+/* In the game chat layout, waiting-layout spans both grid rows as a flex column.
+   waiting-body (flex:1) fills remaining height so the grid gets definite size. */
 .game-view-wrap > .waiting-layout {
   max-width: none;
   margin: 0;
-  display: grid;
-  grid-row: 1 / 3;
-  grid-template-columns: 1fr 320px;
-  grid-template-rows: subgrid;
-  column-gap: 1.5rem;
-}
-.game-view-wrap > .waiting-layout > .waiting-header {
-  grid-column: 1;
-  grid-row: 1;
+  grid-row: 1 / 3; /* span both rows in game-view-wrap subgrid */
 }
 .game-view-wrap > .waiting-layout > .waiting-body {
-  grid-column: 1;
-  grid-row: 2;
+  flex: 1;
   min-height: 0;
-}
-.game-view-wrap > .waiting-layout > .waiting-right-col {
-  grid-column: 2;
-  grid-row: 1 / 3;
 }
 
 /* ===== CHAT PANEL ===== */
@@ -3230,6 +3217,13 @@ body {
   opacity: 1;
 }
 
+.audio-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
 .audio-btn {
   width: 34px;
   height: 34px;
@@ -3491,12 +3485,25 @@ body {
 
 /* ===== MONSTER GRID ===== */
 .monster-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
   max-width: 600px;
   margin: 0 auto;
   width: 100%;
+}
+
+.monster-grid-row {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+/* Single-card rows (easy mode, 3 players): cap width so card stays square */
+.monster-grid-row-1 .monster-card-flipper {
+  max-width: calc(50% - 0.375rem);
+  margin: 0 auto;
 }
 
 .monster-card {
@@ -3720,8 +3727,10 @@ body {
    Each threshold covers that view's tallest reachable state:
    audience = status + peek/wager row + guess-result-mini
    spotter  = status + countdown                               */
-.waiting-controls-audience { min-height: 140px; }
-.waiting-controls-spotter  { min-height: 90px; }
+.waiting-controls-audience    { min-height: 140px; }
+.waiting-controls-spotter     { min-height: 90px; }
+/* Gauntlet spotter: status + vote legend (tallest state) */
+.waiting-controls-spotter-rtg { min-height: 140px; }
 
 .waiting-right-col {
   display: flex;
@@ -4888,6 +4897,7 @@ body {
     padding: 0.5rem;
   }
 
+
   /* Use dvh for full-screen page containers too */
   .lobby-screen,
   .game-over-container {
@@ -5200,8 +5210,9 @@ body {
 /* ===== CARD FLIP ===== */
 .monster-card-flipper {
   perspective: 800px;
-  aspect-ratio: 1;
   position: relative;
+  flex: 1;
+  min-width: 0;
 }
 
 .monster-card-inner {
@@ -6159,14 +6170,39 @@ body {
   overflow: visible;
 }
 
-/* Grid: fills all available height in the column (flex:1 minus controls),
-   stays square via aspect-ratio, never wider than the column (max-width). */
+/* Grid: square, sized to fit the available column.
+   width = min(column width, available viewport height minus chrome).
+   height follows from aspect-ratio:1 — both dimensions are definite,
+   so .monster-grid inside can use height:100% and flex rows get real size. */
 .monster-grid-fill {
-  flex: 1;
-  min-height: 0;
-  width: auto;
-  aspect-ratio: 1;        /* grid height = width → square → cards never overflow controls */
-  max-width: 100% !important;
+  flex: none;
+  width: min(100%, calc(100dvh - 17rem));
+  aspect-ratio: 1;
+  max-width: none !important;
+  margin: 0 auto !important;
+}
+
+/* monster-grid must fill its container so flex:1 rows have definite height */
+.monster-grid-fill > .monster-grid {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+/* Non-uniform rows: when a 3-col row exists, 2-col rows use same card size & center */
+.monster-grid:has(.monster-grid-row-3) .monster-grid-row-2 {
+  justify-content: center;
+}
+.monster-grid:has(.monster-grid-row-3) .monster-grid-row-2 .monster-card-flipper {
+  flex: 0 0 calc((100% - 2 * 0.75rem) / 3);
+}
+/* When a 2-col row exists, 1-col rows center at half width */
+.monster-grid:has(.monster-grid-row-2) .monster-grid-row-1 {
+  justify-content: center;
+}
+.monster-grid:has(.monster-grid-row-2) .monster-grid-row-1 .monster-card-flipper {
+  flex: 0 0 calc((100% - 0.75rem) / 2);
 }
 
 /* ---- Hover quality fix: pan the image instead of scaling anything ----
@@ -6944,13 +6980,14 @@ body {
   justify-content: center;
   font-size: 0.85rem;
   font-weight: 700;
-  color: #ccc;
+  color: transparent;
   background: #fff;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.25s, color 0.25s, border-color 0.25s;
 }
 
 .strike-token-active {
-  background: #000;
+  background: #e63946;
+  border-color: #c1121f;
   color: #fff;
 }
 
@@ -6982,11 +7019,17 @@ body {
   font-size: 2rem;
   color: #000;
   line-height: 1;
+  background: #fff;
+  border: 2.5px solid #000;
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  text-align: center;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.12);
 }
 
 .gauntlet-progress-count span {
   font-size: 1.1rem;
-  opacity: 0.45;
+  opacity: 1;
 }
 
 /* Role badge for PIG */
@@ -7211,9 +7254,88 @@ body {
   font-weight: 700;
 }
 
+/* ======================================================
+   GAUNTLET — LEFT COLUMN SIDE PANEL
+   ====================================================== */
+
+.gauntlet-side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.75rem 0.75rem;
+  width: 100%;
+  background: #fff;
+  border: 2.5px solid #000;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.gauntlet-side-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.gauntlet-side-label {
+  font-family: 'MonsterBody', sans-serif;
+  font-size: 0.7rem;
+  color: #000;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+
 /* Sidebar content fills the full column width. */
 .waiting-right-col > * {
   width: 100%;
+}
+
+/* ======================================================
+   GAUNTLET — CENTRE-SCREEN RESULT OVERLAY
+   ====================================================== */
+
+@keyframes gauntletResultFade {
+  0%   { opacity: 0; transform: translate(-50%, calc(-50% - 12px)) scale(0.92); }
+  14%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  72%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, calc(-50% + 6px)) scale(0.96); }
+}
+
+.gauntlet-result-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1200;
+  pointer-events: none;
+  animation: gauntletResultFade 2.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.gauntlet-result-text {
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: clamp(1.25rem, 3.5vw, 2.4rem);
+  color: #fff;
+  text-align: center;
+  padding: 1.2rem 2.2rem;
+  border-radius: 14px;
+  border: 3px solid rgba(255,255,255,0.5);
+  max-width: min(88vw, 640px);
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.45);
+}
+
+.gauntlet-result-correct .gauntlet-result-text {
+  background: rgba(39, 174, 96, 0.95);
+  border-color: #27ae60;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.3);
+}
+
+.gauntlet-result-wrong .gauntlet-result-text {
+  background: rgba(230, 57, 70, 0.95);
+  border-color: #c1121f;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.3);
 }
 
 /* Turn visualiser in left column — fills all space below the card */
@@ -7245,11 +7367,8 @@ body {
    RESPONSIVE GAME LAYOUT — three-panel → two-panel → one-panel
    ===================================================== */
 
-/* 1100px: hide right col (chat/score/logo); monster grid fills full right width */
+/* 1100px: hide right col (chat/logo) so monster grid gets full width */
 @media (max-width: 1100px) {
-  .game-view-wrap > .waiting-layout {
-    grid-template-columns: 1fr;
-  }
   .waiting-right-col {
     display: none;
   }
@@ -7295,6 +7414,60 @@ body {
   /* Turn visualizer: hidden at this size (priority 4, below WoW card) */
   .game-left-fan-wrap {
     display: none;
+  }
+
+  /* Gauntlet side panel: show compactly in the right side of the top strip */
+  .gauntlet-fan-wrap {
+    display: flex !important;
+    flex: 1;
+    min-width: 0;
+    align-self: stretch;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 10px;
+  }
+
+  .gauntlet-fan-wrap .gauntlet-side-panel {
+    flex-direction: row;
+    gap: 0.65rem;
+    padding: 0.4rem 0.6rem;
+    width: auto;
+    align-items: center;
+  }
+
+  .gauntlet-fan-wrap .gauntlet-side-section {
+    flex-direction: column;
+    gap: 0.15rem;
+    align-items: center;
+  }
+
+  .gauntlet-fan-wrap .gauntlet-side-label {
+    font-size: 0.52rem;
+    letter-spacing: 0.06em;
+  }
+
+  .gauntlet-fan-wrap .gauntlet-strike-bar {
+    gap: 0.18rem;
+  }
+
+  .gauntlet-fan-wrap .strike-token {
+    width: 1.35rem;
+    height: 1.35rem;
+    font-size: 0.68rem;
+    border-width: 2px;
+    border-radius: 3px;
+  }
+
+  .gauntlet-fan-wrap .gauntlet-progress-count {
+    font-size: 1.25rem;
+    line-height: 1;
+    padding: 0.2rem 0.4rem;
+    border-width: 2px;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+  }
+
+  .gauntlet-fan-wrap .gauntlet-progress-count span {
+    font-size: 0.85rem;
   }
 
   /* game-view-wrap: drop grid context, become a flex child */
@@ -7455,7 +7628,7 @@ body {
   .waiting-controls {
     position: sticky;
     bottom: 0;
-    background: var(--bg-deep);
+    background: #fff;
     padding-bottom: 4px;
   }
 
@@ -7466,6 +7639,194 @@ body {
     left: auto;
     right: 1rem;
     bottom: 4.5rem; /* clears the chat toggle button (bottom: 1.2rem + ~36px height) */
+  }
+
+  /* ---- RTG: compact header so the grid gets maximum space ---- */
+  .speaker-instruction-title {
+    font-size: 1.25rem;
+    padding: 0.05rem 0.75rem;
+  }
+  .speaker-instruction-sub {
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+
+  /* RTG spotter: tighten controls area on mobile */
+  .waiting-controls-spotter-rtg {
+    min-height: 0;
+    padding-top: 6px;
+  }
+
+  /* RTG vote legend: smaller text on mobile */
+  .vote-legend-item {
+    font-size: 0.72rem;
+    gap: 0.2rem;
+  }
+  .vote-legend-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+  }
+
+  /* RTG status banners: compact */
+  .status-banner {
+    padding: 0.2rem 0;
+  }
+}
+
+/* =====================================================
+   RTG MOBILE — WoW card in controls (hidden on desktop)
+   ===================================================== */
+.rtg-mobile-wow {
+  display: none;
+}
+
+/* =====================================================
+   RTG MOBILE LAYOUT — compact strikes strip + 50/50 bottom row
+   Overrides the 768px rules above for RTG-only contexts.
+   ===================================================== */
+@media (max-width: 750px) {
+  /* Top strip: strikes only — hide the WoW card, shrink height */
+  .game-chat-layout-rtg .game-left-col {
+    height: 56px;
+  }
+  .game-chat-layout-rtg .game-left-col > div:not(.game-left-fan-wrap) {
+    display: none !important;
+  }
+  .game-chat-layout-rtg .gauntlet-fan-wrap {
+    flex: 1;
+    padding: 0 4px 0 8px;
+    justify-content: flex-start;
+  }
+
+  /* Prevent any text in the top strip from wrapping */
+  .game-chat-layout-rtg .gauntlet-fan-wrap .gauntlet-side-panel,
+  .game-chat-layout-rtg .gauntlet-fan-wrap .gauntlet-side-section,
+  .game-chat-layout-rtg .gauntlet-fan-wrap .gauntlet-side-label,
+  .game-chat-layout-rtg .gauntlet-fan-wrap .gauntlet-progress-count,
+  .game-chat-layout-rtg .gauntlet-fan-wrap .gauntlet-strike-bar {
+    white-space: nowrap;
+    overflow: hidden;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  /* Shrink grid to leave room for taller controls (WoW card + buttons) */
+  .game-chat-layout-rtg .monster-grid-fill {
+    width: min(100%, calc(100dvh - 17rem));
+  }
+
+  /* No scroll needed — content is sized to fit. Use visible so turn-popup isn't clipped.
+     Center content vertically so dead space is distributed above and below. */
+  .game-chat-layout-rtg .waiting-grid-col {
+    overflow-y: visible;
+    justify-content: center;
+  }
+
+  /* Controls: horizontal row (WoW | mic or vote) */
+  .game-chat-layout-rtg .waiting-controls {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem 0.4rem;
+    position: static;
+    background: transparent;
+    min-height: 0;
+  }
+
+  /* Show the WoW card inside the controls row */
+  .game-chat-layout-rtg .rtg-mobile-wow {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+  }
+  .game-chat-layout-rtg .rtg-mobile-wow .quote-card-scene {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    height: auto;
+  }
+
+  /* Mic controls take the right half */
+  .game-chat-layout-rtg .mic-action-section {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  /* Spotter controls inner takes the right half */
+  .game-chat-layout-rtg .spotter-controls-inner {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    overflow-y: auto;
+  }
+  .game-chat-layout-rtg .waiting-controls-spotter-rtg {
+    min-height: 0;
+    padding-top: 0;
+  }
+
+  /* Compact header for RTG */
+  .game-chat-layout-rtg .waiting-header {
+    padding: 0.1rem 0.5rem;
+    gap: 0.1rem;
+  }
+  .game-chat-layout-rtg .speaker-instruction-title {
+    font-size: 1rem;
+    padding: 0.05rem 0.5rem;
+  }
+  .game-chat-layout-rtg .speaker-instruction-sub {
+    font-size: 0.72rem;
+  }
+
+  /* Move fixed audio-controls into the top strip area (top-right), stacked in two rows */
+  body:has(.game-chat-layout-rtg) .audio-controls {
+    bottom: auto;
+    top: 4px;
+    left: auto;
+    right: 8px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    opacity: 1;
+  }
+
+  /* Each row within audio-controls */
+  body:has(.game-chat-layout-rtg) .audio-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* Shrink audio buttons to fit the compact strip */
+  body:has(.game-chat-layout-rtg) .audio-btn {
+    width: 26px;
+    height: 26px;
+  }
+  body:has(.game-chat-layout-rtg) .audio-btn-voice-pill {
+    width: auto;
+    height: 26px;
+    padding: 0 7px 0 5px;
+  }
+  body:has(.game-chat-layout-rtg) .audio-btn-voice-text {
+    font-size: 10px;
+  }
+
+  /* Toast too cramped in the strip — hide it; muted state shows on button icon */
+  body:has(.game-chat-layout-rtg) .voice-status-toast {
+    display: none;
+  }
+
+  /* Reserve right side of top strip for two rows of audio controls (voice row is widest ~110px) */
+  .game-chat-layout-rtg .game-left-col {
+    height: 64px;
+    padding-right: 118px;
   }
 }
 
@@ -7830,6 +8191,22 @@ body {
   pointer-events: none;
 }
 
+/* ===== VOICE STATUS TOAST ===== */
+.voice-status-toast {
+  font-family: 'MonsterBody', sans-serif;
+  font-size: 0.65rem;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 6px;
+  padding: 0.2rem 0.45rem;
+  text-align: center;
+  line-height: 1.3;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ===== OLD VOICE PANEL (removed) ===== */
 .voice-panel {
   position: fixed;
@@ -7960,6 +8337,34 @@ body {
 }
 
 /* ===== WAITING ROOM — CHAT MODE SECTION ===== */
+.wr-difficulty-section {
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.wr-difficulty-label {
+  font-family: 'MonsterHeadline', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #000;
+  margin-bottom: 6px;
+  letter-spacing: 0.04em;
+}
+
+.wr-difficulty-hint {
+  font-family: 'MonsterBody', sans-serif;
+  font-size: 12px;
+  color: #444;
+  margin-top: 6px;
+}
+
+.wr-mode-btn-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .wr-chat-mode-section {
   width: 100%;
   max-width: 380px;

@@ -55,11 +55,22 @@ function AvatarBubble({ avatarId, size, border, shadow, bobIndex }) {
   )
 }
 
-export default function WaitingRoom({ roomCode, players, myPlayer, isHost, gameMode, selectedPigId, onSetMode, onStartGame, onSelectAvatar, errorMsg, voiceChat, onSetVoiceChat }) {
+const DIFFICULTY_LABELS = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
+const MEDIUM_COUNTS = { 3:6, 4:6, 5:7, 6:8, 7:8, 8:8 }
+const GAUNTLET_COUNTS = { easy: 5, medium: 7, hard: 9 }
+function difficultyMonsterCount(d, n) {
+  if (d === 'easy') return n
+  if (d === 'medium') return MEDIUM_COUNTS[n] ?? 9
+  return 9
+}
+function gauntletMonsterCount(d) { return GAUNTLET_COUNTS[d] ?? 9 }
+
+export default function WaitingRoom({ roomCode, players, myPlayer, isHost, gameMode, selectedPigId, onSetMode, onStartGame, onSelectAvatar, errorMsg, voiceChat, onSetVoiceChat, difficulty, onSetDifficulty }) {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
 
   const isGauntlet = gameMode === 'gauntlet'
   const minPlayers = isGauntlet ? 2 : 3
+  const n = players.length
   const canStart = players.length >= minPlayers
 
   const handleModeSwitch = (mode) => {
@@ -161,13 +172,13 @@ export default function WaitingRoom({ roomCode, players, myPlayer, isHost, gameM
             </div>
           ) : (
             <div className="wr-mode-display">
-              {isGauntlet ? 'Run the Gauntlet' : 'Classic Mode'}
+              {isGauntlet ? `Run the Gauntlet · ${DIFFICULTY_LABELS[difficulty] ?? 'Hard'}` : `Classic · ${DIFFICULTY_LABELS[difficulty] ?? 'Hard'}`}
             </div>
           )}
 
           {isGauntlet && (
             <div className="wr-pig-section">
-              <p className="wr-pig-label">Who is PIG? (the voice actor)</p>
+              <p className="wr-pig-label">Who is the Speaker?</p>
               <div className="wr-pig-list">
                 {players.map(player => (
                   <button
@@ -183,16 +194,43 @@ export default function WaitingRoom({ roomCode, players, myPlayer, isHost, gameM
               </div>
               {selectedPig && (
                 <p className="wr-pig-chosen">
-                  {selectedPig.name} will portray all 9 monsters
+                  {selectedPig.name} is the Speaker
                 </p>
               )}
             </div>
           )}
         </div>
 
+        {/* Difficulty selector — host only */}
+        {isHost && (
+          <div className="wr-difficulty-section">
+            <p className="wr-difficulty-label">Difficulty</p>
+            <div className="wr-mode-toggle">
+              {['easy', 'medium', 'hard'].map(d => {
+                const disabled = !isGauntlet && ((d === 'easy' && n > 7) || (d === 'medium' && n > 8))
+                return (
+                  <button
+                    key={d}
+                    className={`wr-mode-btn${difficulty === d ? ' wr-mode-btn-active' : ''}${disabled ? ' wr-mode-btn-disabled' : ''}`}
+                    onClick={() => !disabled && onSetDifficulty(d)}
+                    disabled={disabled}
+                  >
+                    {DIFFICULTY_LABELS[d]}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="wr-difficulty-hint">
+              {isGauntlet
+                ? `${gauntletMonsterCount(difficulty)} monsters for the Speaker to voice`
+                : `${difficultyMonsterCount(difficulty, n)} monsters in the grid`}
+            </p>
+          </div>
+        )}
+
         {/* Chat mode selector */}
         <div className="wr-chat-mode-section">
-          <p className="wr-chat-mode-label">Chat Mode</p>
+          {isHost && <p className="wr-chat-mode-label">Chat Mode</p>}
           {isHost ? (
             <div className="wr-mode-toggle">
               <button
