@@ -116,7 +116,9 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
       {/* Header */}
       <div className="waiting-header">
         <div className="speaker-instruction-block">
-          <h2 className="speaker-instruction-title">You are the Monster Spotter</h2>
+          <h2 className={`speaker-instruction-title${countdown !== null ? ' title-countdown' : ''}`}>
+            {countdown !== null ? `Time's up in ${countdown}s — guess now!` : 'You are the Monster Spotter'}
+          </h2>
           <p className="speaker-instruction-sub">Each player is secretly a monster — listen as they take turns reading the <span className="amber-text">Words of Wisdom</span> in their monster's voice, then tap the one you think they are!</p>
         </div>
         {!audioUnlocked && (
@@ -201,9 +203,6 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
                 <span className="status-waiting"><strong>{speakerName}</strong> is speaking — listen carefully!</span>
               )}
             </div>
-            {countdown !== null && (
-              <div className="timeout-countdown">Time's up in {countdown}s — guess now!</div>
-            )}
             {!replayUrl && waitingForGuess && (
               <p className="timeout-no-audio">The speaker ran out of time and didn't record a voice — but you can still take a guess!</p>
             )}
@@ -231,7 +230,6 @@ export default function MonsterSpotterView({ roundState, guessResult, scores, pl
 
       </div>
 
-      {/* Right column spans header + body via CSS grid on waiting-layout */}
       <div className="waiting-right-col">
         <div className="game-sidebar-logo-wrap">
           <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />

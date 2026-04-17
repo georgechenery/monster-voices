@@ -313,81 +313,93 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
             </div>
 
             <div className="peek-wager-row">
-            <div className="peek-section" ref={peekRef}>
-              {peekState === 'idle' && (
-                <button
-                  className={`btn btn-peek ${!waitingForGuess ? 'btn-peek-disabled' : ''}`}
-                  onClick={waitingForGuess ? handleAskPeek : undefined}
-                >
-                  Ask to Peek
+              <div className="action-duo-row">
+                <div className="action-duo">
+                  {/* Peek slot */}
+                  <div className="peek-section" ref={peekRef}>
+                    {peekState === 'idle' && (
+                      <button
+                        className={`btn-duo-action${!waitingForGuess ? ' btn-duo-action-disabled' : ''}`}
+                        onClick={waitingForGuess ? handleAskPeek : undefined}
+                      >
+                        Ask to Peek
+                      </button>
+                    )}
+                    {peekState === 'pending' && (
+                      <div className="peek-status peek-status-pending">
+                        Waiting for {speakerName}...
+                      </div>
+                    )}
+                    {peekState === 'denied' && (
+                      <div className="peek-status peek-status-denied">
+                        {speakerName} said no!
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="action-duo-divider" />
+
+                  {/* Wager slot */}
+                  <div className="wager-section">
+                    {wagerState === 'idle' && (
+                      <button
+                        className={`btn-duo-action${(!waitingForGuess || hasPeeked) ? ' btn-duo-action-disabled' : ''}`}
+                        onClick={waitingForGuess && !hasPeeked ? () => setWagerState('picking') : undefined}
+                      >
+                        Place Wager
+                      </button>
+                    )}
+                    {wagerState === 'picking' && (
+                      <div className="wager-picking-row">
+                        <span className="wager-picking-prompt">Pick a monster to wager on</span>
+                        <button className="btn btn-wager-cancel" onClick={() => setWagerState('idle')}>Cancel</button>
+                      </div>
+                    )}
+                    {wagerState === 'placed' && wagerPosition !== null && (
+                      <div className="wager-placed">
+                        <span>Wager placed ✓</span>
+                        <button className="btn-wager-change" onClick={() => setWagerState('picking')}>
+                          Change
+                        </button>
+                      </div>
+                    )}
+                    {showWagerHelp && (
+                      <div className="wager-help-popup">
+                        <strong>How Wagering Works</strong>
+                        <ul>
+                          <li>Pick right, Spotter picks wrong — win 1 point</li>
+                          <li>Pick the same as the Spotter — point returned</li>
+                          <li>Pick wrong — lose 1 point</li>
+                        </ul>
+                        <p className="wager-help-note">Not available if you have peeked this round.</p>
+                        <button className="btn-wager-help-close" onClick={() => setShowWagerHelp(false)}>Got it</button>
+                      </div>
+                    )}
+                    {showResult && wagerResult !== null && wagerResult !== 0 && (
+                      <div className={`wager-result-mini ${wagerResult > 0 ? 'result-correct' : 'result-wrong'}`}>
+                        {wagerResult > 0 ? 'Your wager: +1 point!' : 'Your wager: −1 point'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Wager help button sits outside the duo, to its right */}
+                <button className="btn-wager-help" onClick={() => setShowWagerHelp(p => !p)}>?</button>
+              </div>{/* end action-duo-row */}
+
+              {/* Unified availability note — applies to both buttons */}
+              {!waitingForGuess && peekState === 'idle' && (
+                <p className="action-duo-note">Available after <strong>{speakerName}</strong> has spoken</p>
+              )}
+              {hasPeeked && wagerState === 'idle' && waitingForGuess && (
+                <p className="action-duo-note">Place Wager not available — you peeked</p>
+              )}
+
+              {replayUrl && (
+                <button className="btn btn-replay btn-replay-sm" onClick={handleReplay}>
+                  Listen Again
                 </button>
               )}
-              {peekState === 'pending' && (
-                <div className="peek-status peek-status-pending">
-                  Waiting for {speakerName} to respond...
-                </div>
-              )}
-              {peekState === 'denied' && (
-                <div className="peek-status peek-status-denied">
-                  {speakerName} said no!
-                </div>
-              )}
-            </div>
-
-            {/* Listen Again — sits between peek and wager */}
-            {replayUrl && (
-              <button className="btn btn-replay btn-replay-sm" onClick={handleReplay}>
-                Listen Again
-              </button>
-            )}
-
-            {/* Wager section */}
-            <div className="wager-section">
-              {wagerState === 'idle' && (
-                <div className="wager-idle-row">
-                  <button
-                    className={`btn btn-wager${!waitingForGuess || hasPeeked ? ' btn-wager-disabled' : ''}`}
-                    onClick={waitingForGuess && !hasPeeked ? () => setWagerState('picking') : undefined}
-                  >
-                    Wager
-                  </button>
-                  <button className="btn-wager-help" onClick={() => setShowWagerHelp(p => !p)}>?</button>
-                  {hasPeeked && <span className="wager-note">Not available — you peeked</span>}
-                  {!waitingForGuess && !hasPeeked && <span className="wager-note">(available after they speak)</span>}
-                </div>
-              )}
-              {wagerState === 'picking' && (
-                <div className="wager-picking-row">
-                  <span className="wager-picking-prompt">Pick a monster to wager on</span>
-                  <button className="btn btn-wager-cancel" onClick={() => setWagerState('idle')}>Cancel</button>
-                </div>
-              )}
-              {wagerState === 'placed' && wagerPosition !== null && (
-                <div className="wager-placed">
-                  <span>Wager placed ✓</span>
-                  <button className="btn-wager-change" onClick={() => setWagerState('picking')}>
-                    Change
-                  </button>
-                </div>
-              )}
-              {showWagerHelp && (
-                <div className="wager-help-popup">
-                  <strong>How Wagering Works</strong>
-                  <ul>
-                    <li>Pick right, Spotter picks wrong — win 1 point</li>
-                    <li>Pick the same as the Spotter — point returned</li>
-                    <li>Pick wrong — lose 1 point</li>
-                  </ul>
-                  <p className="wager-help-note">Not available if you have peeked this round.</p>
-                  <button className="btn-wager-help-close" onClick={() => setShowWagerHelp(false)}>Got it</button>
-                </div>
-              )}
-              {showResult && wagerResult !== null && wagerResult !== 0 && (
-                <div className={`wager-result-mini ${wagerResult > 0 ? 'result-correct' : 'result-wrong'}`}>
-                  {wagerResult > 0 ? 'Your wager: +1 point!' : 'Your wager: −1 point'}
-                </div>
-              )}
-            </div>
             </div>{/* end peek-wager-row */}
 
             {!replayUrl && waitingForGuess && (
@@ -409,7 +421,6 @@ export default function WaitingPlayerView({ roundState, myMonster, guessResult, 
 
       </div>
 
-      {/* Right column spans header + body via CSS grid on waiting-layout */}
       <div className="waiting-right-col">
         <div className="game-sidebar-logo-wrap">
           <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />

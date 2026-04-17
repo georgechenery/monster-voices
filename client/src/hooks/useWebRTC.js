@@ -16,7 +16,9 @@ function getSupportedMimeType() {
 const WAVEFORM_LEN = 60      // samples kept in history (60 × 100ms = 6 s of waveform)
 const SAMPLE_INTERVAL_MS = 100
 
-export function useWebRTC(socket, isSpeaker, isListener, speakerId) {
+export function useWebRTC(socket, isSpeaker, isListener, speakerId, onAutoplayEnded) {
+  const onAutoplayEndedRef = useRef(onAutoplayEnded)
+  useEffect(() => { onAutoplayEndedRef.current = onAutoplayEnded }, [onAutoplayEnded])
   // Speaker refs
   const micStreamRef = useRef(null)
   const speakerPeersRef = useRef({})
@@ -278,6 +280,7 @@ export function useWebRTC(socket, isSpeaker, isListener, speakerId) {
       setReplayUrl(url)
       if (replayAudioRef.current) {
         replayAudioRef.current.src = url
+        replayAudioRef.current.onended = () => onAutoplayEndedRef.current?.()
         replayAudioRef.current.play().catch(() => {})
       }
     }

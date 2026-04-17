@@ -214,6 +214,10 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
 
           {/* Mic controls */}
           <div className="waiting-controls rtg-pig-controls">
+            <div className="rtg-role-label">
+              <span className="rtg-role-label-title">You're the Speaker</span>
+              <span className="rtg-role-label-sub">voice each monster on the card</span>
+            </div>
             <div className="rtg-mobile-wow">
               <QuoteCard quote={gauntletState.quote} flipKey={quoteFlipKey} />
             </div>

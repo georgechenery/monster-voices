@@ -16,7 +16,7 @@ export default function GauntletSpotterView({ gauntletState, myPlayer, players, 
     liveAudioRef, replayAudioRef,
     audioUnlocked, audioBlocked, unlockAudio,
     replayUrl, handleReplay
-  } = useWebRTC(socket, false, true, pigId)
+  } = useWebRTC(socket, false, true, pigId, onReplayEnd)
 
   const myVote = votes[myPlayer.id]
   const spotterIds = players.filter(p => p.id !== pigId).map(p => p.id)
@@ -126,6 +126,10 @@ export default function GauntletSpotterView({ gauntletState, myPlayer, players, 
 
           {/* Controls */}
           <div className="waiting-controls waiting-controls-spotter-rtg">
+            <div className="rtg-role-label">
+              <span className="rtg-role-label-title">You're a Spotter</span>
+              <span className="rtg-role-label-sub">listen, then tap the monster</span>
+            </div>
             <div className="rtg-mobile-wow">
               <QuoteCard quote={gauntletState.quote} flipKey={quoteFlipKey} />
             </div>

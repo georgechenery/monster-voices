@@ -213,12 +213,14 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
   const alertActive = showTurnAlert && stage === 'ready'
 
   return (
-    <div className={`waiting-layout${alertActive ? ' turn-active' : ''}`}>
+    <div className={`waiting-layout${alertActive ? ' turn-active' : ''} view-speaker`}>
 
       {/* Header */}
       <div className="waiting-header">
         <div className="speaker-instruction-block">
-          <h2 className="speaker-instruction-title">Your Turn to Speak!</h2>
+          <h2 className={`speaker-instruction-title${countdown !== null ? ' title-countdown' : ''}`}>
+            {countdown !== null ? `Auto-submitting in ${countdown}s` : 'Your Turn to Speak!'}
+          </h2>
           <p className="speaker-instruction-sub">Read the <span className="amber-text">Words of Wisdom</span> in your monster's voice — try to get <strong>{spotterName}</strong> to guess who you are!</p>
         </div>
         <button className="btn-help" onClick={() => setShowHelp(true)}>?</button>
@@ -292,7 +294,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
           </div>
 
           {/* Mic controls */}
-          <div className="waiting-controls">
+          <div className="waiting-controls waiting-controls-speaker">
             <div className="mic-action-section" ref={micRef}>
               {!isHttps && (
                 <div className="mic-error">
@@ -394,17 +396,12 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
                 </div>
               )}
 
-              {countdown !== null && (
-                <div className="timeout-countdown">Auto-submitting in {countdown}s</div>
-              )}
-
             </div>
           </div>
         </div>
 
       </div>
 
-      {/* Right column spans header + body via CSS grid on waiting-layout */}
       <div className="waiting-right-col">
         <div className="game-sidebar-logo-wrap">
           <img src={mvLogo} alt="Monster Voices" className="game-sidebar-logo" />

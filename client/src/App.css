@@ -19,6 +19,7 @@
   src: url('./assets/fonts/body-bold.ttf') format('truetype');
   font-weight: bold;
   font-style: normal;
+  font-display: swap;
 }
 
 /* ===== RESET & BASE ===== */
@@ -794,7 +795,8 @@ body {
   display: grid;
   grid-template-rows: subgrid;
   min-width: 0;
-  overflow: hidden;
+  overflow: clip;
+  overflow-clip-margin: 1.5rem; /* waiting-layout starts above this element; extend clip to show title ascenders */
   position: relative;
 }
 
@@ -3695,9 +3697,6 @@ body {
 }
 
 .waiting-body {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 1rem;
   flex: 1;
   min-height: 0;
 }
@@ -3728,7 +3727,7 @@ body {
    audience = status + peek/wager row + guess-result-mini
    spotter  = status + countdown                               */
 .waiting-controls-audience    { min-height: 140px; }
-.waiting-controls-spotter     { min-height: 90px; }
+.waiting-controls-spotter     { min-height: 68px; }
 /* Gauntlet spotter: status + vote legend (tallest state) */
 .waiting-controls-spotter-rtg { min-height: 140px; }
 
@@ -4990,7 +4989,7 @@ body {
   color: #000;
   border: 2px solid #fff;
   border-radius: var(--radius-lg);
-  padding: 16px 36px;
+  padding: 12px 36px;
   font-family: 'MonsterBody', sans-serif;
   font-size: 1.2rem;
   font-weight: 700;
@@ -5031,7 +5030,7 @@ body {
   gap: 12px;
   margin: 8px 0;
   position: relative;
-  min-height: 160px;
+  min-height: 100px;
 }
 
 .mic-visualizer-inline {
@@ -5370,9 +5369,9 @@ body {
 /* ===== PEEK + WAGER ROW ===== */
 .peek-wager-row {
   display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
   width: 100%;
 }
 .peek-wager-row .peek-section,
@@ -5606,6 +5605,7 @@ body {
   align-items: center;
   gap: 8px;
   margin: 8px 0;
+  position: relative;
 }
 
 .wager-idle-row {
@@ -5664,6 +5664,87 @@ body {
   opacity: 0.65;
 }
 
+/* ===== ACTION DUO — unified Peek + Wager container ===== */
+.action-duo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.action-duo {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  border: 1.5px solid rgba(255,255,255,0.14);
+  border-radius: 10px;
+  overflow: visible;
+  background: rgba(255,255,255,0.04);
+}
+
+.action-duo > .peek-section,
+.action-duo > .wager-section {
+  flex: 1;
+  min-height: 42px;
+  justify-content: center;
+  margin: 0;
+  gap: 4px;
+  padding: 4px 6px;
+}
+
+
+.action-duo-divider {
+  width: 1px;
+  background: rgba(255,255,255,0.12);
+  flex-shrink: 0;
+  align-self: stretch;
+}
+
+.btn-duo-action {
+  background: transparent;
+  border: none;
+  padding: 8px 10px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-family: 'MonsterHeadline', sans-serif;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  width: 100%;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.btn-duo-action:not(.btn-duo-action-disabled):hover {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+}
+
+.action-duo > .peek-section .btn-duo-action:not(.btn-duo-action-disabled):hover {
+  color: #a855f7;
+}
+
+.action-duo > .wager-section .btn-duo-action:not(.btn-duo-action-disabled):hover {
+  color: #f59e0b;
+}
+
+.btn-duo-action-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.action-duo-note {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  text-align: center;
+  margin: 0;
+}
+
 .wager-picking-row {
   display: flex;
   align-items: center;
@@ -5719,6 +5800,11 @@ body {
 }
 
 .wager-help-popup {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
   background: #fff;
   border: 2.5px solid #000;
   border-radius: var(--radius-md);
@@ -6030,6 +6116,7 @@ body {
   width: 100%;
   gap: 0.5rem;
   min-height: 0;
+  padding-top: clamp(5.5rem, calc(1.8rem + 5.77vw), 7rem);
   padding-bottom: 56px;
 }
 
@@ -6058,6 +6145,7 @@ body {
 /* Amber inline highlight — used in Monster Spotter header for "Words of Wisdom" */
 .amber-text {
   color: #f0b429;
+  white-space: nowrap;
 }
 
 /* Amber card border + glow for Monster Spotter view */
@@ -6150,6 +6238,92 @@ body {
   max-width: 1100px; /* centres the layout with equal margins on wide screens */
 }
 
+/* Party mode views (MonsterSpotter, Speaker, WaitingPlayer) have waiting-right-col as
+   a direct child of waiting-layout. Single-column grid with padding-right reserving space
+   for the absolutely-positioned sidebar so it never conflicts with the grid track sizing. */
+.waiting-layout:has(> .waiting-right-col) {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
+  /* Reserve right-side space for the absolutely-positioned sidebar */
+  padding-right: calc(clamp(220px, 22vw, 320px) + 1.5rem);
+  box-sizing: border-box;
+}
+.waiting-layout:has(> .waiting-right-col) > .waiting-header {
+  grid-column: 1;
+  grid-row: 1;
+}
+.waiting-layout:has(> .waiting-right-col) > .waiting-body {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 0;
+}
+/* Right col: absolutely positioned so its height is guaranteed = layout height,
+   independent of grid track sizing. top+bottom=0 locks it to the waiting-layout bounds. */
+.waiting-layout:has(> .waiting-right-col) > .waiting-right-col {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: clamp(220px, 22vw, 320px);
+  overflow: hidden;
+}
+/* Hide the sidebar at ≤1100px (high-specificity so it wins over base display:flex rules) */
+@media (max-width: 1100px) {
+  .waiting-layout:has(> .waiting-right-col) > .waiting-right-col {
+    display: none;
+  }
+}
+/* Fixed-height controls + vertically centered grid for party mode */
+.waiting-layout:has(> .waiting-right-col) .waiting-controls-spotter {
+  flex: 0 0 68px;
+  max-height: 68px;
+  min-height: 68px;
+  overflow: hidden;
+}
+.waiting-layout:has(> .waiting-right-col) .waiting-controls-audience {
+  flex: 0 0 140px;
+  max-height: 140px;
+  min-height: 140px;
+}
+.waiting-layout:has(> .waiting-right-col) .waiting-controls-speaker {
+  flex: 0 0 155px;
+  max-height: 155px;
+  min-height: 155px;
+  justify-content: center;
+}
+.waiting-layout:has(> .waiting-right-col) .waiting-grid-col > .monster-grid-fill {
+  margin: auto !important;
+}
+/* Speaker controls are 155px vs spotter's 68px — shrink the grid formula to prevent
+   overflow that triggers a Chrome subgrid mispositioning bug (layout shifts up). */
+.view-speaker .monster-grid-fill {
+  width: min(100%, calc(100dvh - 18.75rem));
+}
+/* Header countdown state */
+@keyframes countdown-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.title-countdown,
+.view-speaker .speaker-instruction-title.title-countdown {
+  color: #ff4444;
+  animation: countdown-pulse 1s ease-in-out infinite;
+}
+
+/* At ≤1100px the sidebar is hidden — collapse back to flex-column for simplicity */
+@media (max-width: 1100px) {
+  .waiting-layout:has(> .waiting-right-col) {
+    display: flex;
+    flex-direction: column;
+    padding-right: 0;
+    grid-template-columns: unset;
+    grid-template-rows: unset;
+    column-gap: unset;
+  }
+}
+
 .waiting-body {
   display: flex;
   justify-content: center;
@@ -6164,10 +6338,11 @@ body {
   align-items: center;
 }
 
-/* Sidebar: width comes from the CSS grid column definition (320px). */
+/* Sidebar: fixed width so it doesn't grow unbounded in the flex layout. */
 .waiting-right-col {
+  width: clamp(220px, 22vw, 320px);
+  flex: 0 0 auto;
   justify-content: flex-start;
-  overflow: visible;
 }
 
 /* Grid: square, sized to fit the available column.
@@ -6333,7 +6508,7 @@ body {
 .speaker-instruction-title {
   color: #000;
   background: radial-gradient(ellipse at center, rgba(255,255,255,0.93) 40%, transparent 100%);
-  padding: 0.1rem 1.5rem;
+  padding: 0.35rem 1.5rem 0.15rem;
   border-radius: 4px;
   width: fit-content;
   align-self: center;
@@ -6341,11 +6516,17 @@ body {
 
 .speaker-instruction-sub {
   font-family: 'MonsterBody', sans-serif;
-  font-size: 1.1rem;
+  font-size: clamp(0.78rem, 1.4vw, 1.1rem);
   font-weight: 700;
   color: #111;
-  line-height: 1.2;
+  line-height: 1.35;
   text-align: center;
+  text-wrap: balance;
+}
+
+/* Speaker view: title inherits the shared black colour — amber was invisible on white background */
+.view-speaker .speaker-instruction-title {
+  color: #000;
 }
 
 .status-active,
@@ -6787,6 +6968,55 @@ body {
 
 .wager-note {
   color: #555;
+}
+
+/* ---- Action Duo UI (light-background game views) ---- */
+.action-duo-row .btn-wager-help {
+  color: #000;
+  border-color: #000;
+}
+
+.action-duo {
+  border-color: rgba(0,0,0,0.12);
+  background: rgba(0,0,0,0.025);
+}
+
+.action-duo-divider {
+  background: rgba(0,0,0,0.1);
+}
+
+.btn-duo-action {
+  color: #444;
+}
+
+.btn-duo-action:not(.btn-duo-action-disabled):hover {
+  background: rgba(0,0,0,0.04);
+  color: #000;
+}
+
+.action-duo > .peek-section .btn-duo-action:not(.btn-duo-action-disabled):hover {
+  color: #7c3aed;
+}
+
+.action-duo > .wager-section .btn-duo-action:not(.btn-duo-action-disabled):hover {
+  color: #b45309;
+}
+
+.action-duo-note {
+  color: #555;
+  opacity: 0.9;
+}
+
+/* Player names in status/subtitle text use MonsterHeadline — bypasses the broken bold fallback
+   and matches the user-visible design intent (headline font for names). */
+.speaker-instruction-sub strong,
+.status-waiting strong,
+.status-speaking strong,
+.status-active strong,
+.status-guessing strong,
+.action-duo-note strong {
+  font-family: 'MonsterHeadline', sans-serif;
+  font-weight: normal;
 }
 
 .peek-status {
@@ -7390,6 +7620,7 @@ body {
     flex-direction: row;
     height: 110px;
     flex-shrink: 0;
+    padding-top: 0;
     padding-bottom: 0;
     align-items: center;
     justify-content: flex-start;
@@ -7616,6 +7847,18 @@ body {
     flex-wrap: wrap;
   }
 
+  /* Help button: push below WoW card strip and to the right to avoid subtitle text */
+  .game-view-wrap > .waiting-layout .btn-help {
+    top: 122px;
+    left: auto;
+    right: 12px;
+  }
+
+  /* Pad subtitle so text wraps before reaching the help button */
+  .game-view-wrap > .waiting-layout .speaker-instruction-sub {
+    padding-right: 52px;
+  }
+
   /* ---- Speaker button: make the grid column scrollable so the button is
      never pushed off-screen by the 3×3 grid on small phones.
      The controls section sticks to the bottom of the column so the button
@@ -7644,11 +7887,10 @@ body {
   /* ---- RTG: compact header so the grid gets maximum space ---- */
   .speaker-instruction-title {
     font-size: 1.25rem;
-    padding: 0.05rem 0.75rem;
+    padding: 0.2rem 0.75rem 0.1rem;
   }
   .speaker-instruction-sub {
-    font-size: 0.78rem;
-    line-height: 1.3;
+    line-height: 1.35;
   }
 
   /* RTG spotter: tighten controls area on mobile */
@@ -7680,22 +7922,30 @@ body {
   display: none;
 }
 
+.rtg-role-label {
+  display: none;
+}
+
 /* =====================================================
-   RTG MOBILE LAYOUT — compact strikes strip + 50/50 bottom row
+   RTG MOBILE LAYOUT — compact strikes strip + 60/40 bottom row
    Overrides the 768px rules above for RTG-only contexts.
    ===================================================== */
-@media (max-width: 750px) {
-  /* Top strip: strikes only — hide the WoW card, shrink height */
+@media (max-width: 768px) {
+  /* Strikes bar: at the top, audio controls float top-right */
   .game-chat-layout-rtg .game-left-col {
-    height: 56px;
+    height: auto;
+    min-height: 80px;
+    padding: 6px 132px 6px 12px;
+    border-bottom: 1px solid #e5e5e5;
   }
   .game-chat-layout-rtg .game-left-col > div:not(.game-left-fan-wrap) {
     display: none !important;
   }
   .game-chat-layout-rtg .gauntlet-fan-wrap {
     flex: 1;
-    padding: 0 4px 0 8px;
+    padding: 0;
     justify-content: flex-start;
+    align-items: center;
   }
 
   /* Prevent any text in the top strip from wrapping */
@@ -7710,9 +7960,9 @@ body {
     min-width: 0;
   }
 
-  /* Shrink grid to leave room for taller controls (WoW card + buttons) */
+  /* Grid: fills space — overhead is ~221px (strikes 80 + title 30 + controls 96 + gaps ~15px) */
   .game-chat-layout-rtg .monster-grid-fill {
-    width: min(100%, calc(100dvh - 17rem));
+    width: min(100%, calc(100dvh - 221px));
   }
 
   /* No scroll needed — content is sized to fit. Use visible so turn-popup isn't clipped.
@@ -7722,42 +7972,51 @@ body {
     justify-content: center;
   }
 
-  /* Controls: horizontal row (WoW | mic or vote) */
+  /* Controls: horizontal row — fixed height so WoW card can't blow up the layout */
   .game-chat-layout-rtg .waiting-controls {
     flex-direction: row;
     align-items: stretch;
     gap: 0.5rem;
-    padding: 0.25rem 0.5rem 0.4rem;
+    padding: 0.25rem 0.5rem 0.3rem;
     position: static;
     background: transparent;
     min-height: 0;
+    height: 96px;
+    flex-shrink: 0;
+    overflow: hidden;
   }
 
-  /* Show the WoW card inside the controls row */
+  /* WoW card: sized by height so it never overflows the row */
   .game-chat-layout-rtg .rtg-mobile-wow {
     display: flex;
-    flex: 1;
+    flex: 3;
     min-width: 0;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
   }
   .game-chat-layout-rtg .rtg-mobile-wow .quote-card-scene {
-    width: 100%;
+    height: 100%;
+    width: auto;
     max-width: none;
     margin: 0;
-    height: auto;
   }
 
-  /* Mic controls take the right half */
+  /* Role label hidden — title header handles this */
+  .game-chat-layout-rtg .rtg-role-label {
+    display: none;
+  }
+
+  /* Mic controls take 40% */
   .game-chat-layout-rtg .mic-action-section {
-    flex: 1;
+    flex: 2;
     min-width: 0;
     justify-content: center;
   }
 
-  /* Spotter controls inner takes the right half */
+  /* Spotter controls inner takes 40% */
   .game-chat-layout-rtg .spotter-controls-inner {
-    flex: 1;
+    flex: 2;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -7771,23 +8030,42 @@ body {
     padding-top: 0;
   }
 
-  /* Compact header for RTG */
+  /* Compact title header — just the role name, no subtitle */
   .game-chat-layout-rtg .waiting-header {
-    padding: 0.1rem 0.5rem;
-    gap: 0.1rem;
+    padding: 5px 16px 4px 12px;
+    gap: 0;
+    flex-wrap: nowrap;
+    min-height: 0;
+    flex-shrink: 0;
   }
   .game-chat-layout-rtg .speaker-instruction-title {
     font-size: 1rem;
-    padding: 0.05rem 0.5rem;
+    padding: 0;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .game-chat-layout-rtg .speaker-instruction-sub {
-    font-size: 0.72rem;
+    display: none;
   }
 
-  /* Move fixed audio-controls into the top strip area (top-right), stacked in two rows */
+  /* Hide the "Next Monster!" popup in RTG mobile — it floats up and covers the grid.
+     The WoW card flip + mine card highlight already signal the new monster. */
+  .game-chat-layout-rtg .turn-popup {
+    display: none;
+  }
+
+  /* Controls: WoW 60% (flex:3), actions 40% (flex:2) */
+  .game-chat-layout-rtg .mic-action-section,
+  .game-chat-layout-rtg .spotter-controls-inner {
+    flex: 2;
+  }
+
+  /* Audio controls: top-right corner of the strikes bar */
   body:has(.game-chat-layout-rtg) .audio-controls {
+    top: 6px;
     bottom: auto;
-    top: 4px;
     left: auto;
     right: 8px;
     flex-direction: column;
@@ -7804,18 +8082,18 @@ body {
     gap: 4px;
   }
 
-  /* Shrink audio buttons to fit the compact strip */
+  /* Shrink audio buttons to fit the compact strip, but keep touch targets 36px minimum */
   body:has(.game-chat-layout-rtg) .audio-btn {
-    width: 26px;
-    height: 26px;
+    width: 36px;
+    height: 36px;
   }
   body:has(.game-chat-layout-rtg) .audio-btn-voice-pill {
     width: auto;
-    height: 26px;
-    padding: 0 7px 0 5px;
+    height: 36px;
+    padding: 0 9px 0 7px;
   }
   body:has(.game-chat-layout-rtg) .audio-btn-voice-text {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   /* Toast too cramped in the strip — hide it; muted state shows on button icon */
@@ -7823,11 +8101,37 @@ body {
     display: none;
   }
 
-  /* Reserve right side of top strip for two rows of audio controls (voice row is widest ~110px) */
+  /* Final override: ensure padding-right clears the two stacked audio buttons */
   .game-chat-layout-rtg .game-left-col {
-    height: 64px;
-    padding-right: 118px;
+    padding-right: 132px;
   }
+
+  /* Larger, more readable strike tokens */
+  .game-chat-layout-rtg .gauntlet-fan-wrap .strike-token {
+    width: 1.7rem;
+    height: 1.7rem;
+    font-size: 0.82rem;
+    border-width: 2px;
+    border-radius: 4px;
+  }
+  .game-chat-layout-rtg .gauntlet-fan-wrap .gauntlet-strike-bar {
+    gap: 0.28rem;
+  }
+  .game-chat-layout-rtg .gauntlet-fan-wrap .gauntlet-side-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+  }
+  .game-chat-layout-rtg .gauntlet-fan-wrap .gauntlet-progress-count {
+    font-size: 1.4rem;
+    padding: 0.2rem 0.5rem;
+  }
+  .game-chat-layout-rtg .gauntlet-fan-wrap .gauntlet-side-panel {
+    gap: 1rem;
+  }
+
+  /* Hide verbose hints */
+  .game-chat-layout-rtg .ready-hint { display: none; }
+  .game-chat-layout-rtg .connection-status { display: none; }
 }
 
 /* =====================================================

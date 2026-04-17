@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import socket from './socket'
-import { playTrack, setDucked, setMusicMuted } from './utils/music'
+import { playTrack, setDucked, setMusicMuted, setGameplayMuted } from './utils/music'
 import { setSfxMuted } from './utils/sounds'
 import Lobby from './components/Lobby'
 import EmotePreview from './components/EmotePreview'
@@ -91,6 +91,7 @@ export default function App() {
   // Refs for socket handlers that need current state without re-registering
   const gauntletStateRef = useRef(null)
   const playersRef = useRef([])
+  const voiceMuteTimerRef = useRef(null)
 
   // Chat
   const [chatMessages, setChatMessages] = useState([])
@@ -275,15 +276,22 @@ export default function App() {
       }
     })
 
-    // After recording plays, switch notification to "listening" then unmute after 10s
+    // After recording plays, mute music + switch notification to "listening".
+    // Voice/music unmute is driven by onReplayEnd (audio onended event).
+    // Safety fallback timer clears after 60s in case onended never fires.
     const handleAudioReadyForVoice = () => {
       const gs = gauntletStateRef.current
       const ps = playersRef.current
+      setGameplayMuted(true)
       if (gs) {
         const pigName = ps.find(p => p.id === gs.pigId)?.name ?? ''
         if (pigName) setVoiceStatusMsg(`${pigName} – voice chat muted (listening)`)
       }
-      setTimeout(() => setVoiceMuted(false), 10000)
+      clearTimeout(voiceMuteTimerRef.current)
+      voiceMuteTimerRef.current = setTimeout(() => {
+        setVoiceMuted(false)
+        setGameplayMuted(false)
+      }, 60000)
     }
     socket.on('audio_ready', handleAudioReadyForVoice)
 
@@ -440,6 +448,9 @@ export default function App() {
 
     socket.on('gauntlet_next_monster', ({ quote, monstersLeft }) => {
       setMyMonster(null) // PIG gets new your_monster event privately
+      clearTimeout(voiceMuteTimerRef.current)
+      setVoiceMuted(false)
+      setGameplayMuted(false)
       setQuoteFlipKey(k => k + 1)
       setGauntletState(prev => prev ? {
         ...prev,
@@ -452,6 +463,9 @@ export default function App() {
     })
 
     socket.on('gauntlet_retry', ({ newQuote, strikes, monstersLeft }) => {
+      clearTimeout(voiceMuteTimerRef.current)
+      setVoiceMuted(false)
+      setGameplayMuted(false)
       setQuoteFlipKey(k => k + 1)
       setGauntletState(prev => prev ? {
         ...prev,
@@ -602,9 +616,14 @@ export default function App() {
           onSendEmote={handleSendEmote}
           onReplayStart={() => {
             setVoiceMuted(true)
+            setGameplayMuted(true)
             if (pigName) setVoiceStatusMsg(`${pigName} – voice chat muted (listening)`)
           }}
-          onReplayEnd={() => setVoiceMuted(false)}
+          onReplayEnd={() => {
+            clearTimeout(voiceMuteTimerRef.current)
+            setVoiceMuted(false)
+            setGameplayMuted(false)
+          }}
         />
       )
     } else {
