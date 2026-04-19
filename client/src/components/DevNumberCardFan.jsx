@@ -78,32 +78,52 @@ function computeLayout(w, h, n) {
     Math.min(COIN_R * 1.35, slotH / 2 - 4, 40)
   ))
 
-  // Spotter coin — 1.75× a regular speaker coin, always at least as big
-  // as the active speaker coin. Caps prevent overflow: height cap gives a
-  // 4px margin at top and bottom of the container; width cap keeps it from
-  // eating too much of the narrow right column.
-  const SPOT_R = Math.max(COIN_R_BIG, Math.round(
-    Math.min(COIN_R * 1.75, h * 0.45, w * 0.18, 56)
-  ))
-  const SPOT_X = SPOT_R + Math.max(12, Math.round(w * 0.06))
-  const SPOT_Y = h / 2
-
   // Strike boxes — scale with coin size, minimum 7 px wide
   const STK_W   = Math.max(7,  Math.round(COIN_R * 0.62))
   const STK_GAP = Math.max(2,  Math.round(COIN_R * 0.14))
+
+  // Reserve space for name labels on the right so text never clips.
+  const TEXT_RESERVE = Math.max(60, Math.round(w * 0.30))
+  const COIN_MAX_X   = w - COIN_R_BIG - 4 - 2 * STK_W - STK_GAP - 4 - TEXT_RESERVE
+
+  const pad      = Math.max(12, Math.round(w * 0.06))
+  const arcGapV  = Math.max(6,  Math.round(w * 0.025))
+  const arcSpanV = Math.round(Math.min(w * 0.08, 28))
+  const SPOT_Y   = h / 2
+
+  // Spotter coin — 1.75× a regular speaker coin, always at least as big
+  // as the active speaker coin. Then shrink iteratively until there is a
+  // visible arrow gap between spotter and every speaker coin.
+  let SPOT_R = Math.max(COIN_R_BIG, Math.round(
+    Math.min(COIN_R * 1.75, h * 0.45, w * 0.18, 56)
+  ))
+  for (let iter = 0; iter < 50 && SPOT_R > COIN_R; iter++) {
+    const sX   = SPOT_R + pad
+    const arcS = sX + SPOT_R + arcGapV + COIN_R_BIG
+    const axMin = Math.min(arcS, COIN_MAX_X)
+    const axMax = Math.min(arcS + arcSpanV, COIN_MAX_X)
+    const arrowNeeded = Math.max(8, Math.round(SPOT_R * 0.5)) + 4
+    let ok = true
+    for (let i = 0; i < N; i++) {
+      const sy     = (i + 0.5) * slotH
+      const factor = N <= 1 ? 1 : Math.cos(((i / (N - 1)) - 0.5) * Math.PI) ** 2
+      const sx     = axMin + (axMax - axMin) * factor
+      const gap    = Math.hypot(sx - sX, sy - SPOT_Y) - SPOT_R - COIN_R_BIG
+      if (gap < arrowNeeded) { ok = false; break }
+    }
+    if (ok) break
+    SPOT_R = Math.max(COIN_R, SPOT_R - 1)
+  }
+
+  const SPOT_X = SPOT_R + pad
 
   // Arrow from spotter to current speaker
   const ARROW_LEN = Math.max(8, Math.round(SPOT_R * 0.5))
 
   // Speaker arc ──────────────────────────────────────────────────────────────
-  const arcGap    = Math.max(6, Math.round(w * 0.025))
+  const arcGap    = arcGapV
   const arcStart  = SPOT_X + SPOT_R + arcGap + COIN_R_BIG
-  const arcSpan   = Math.round(Math.min(w * 0.08, 28))
-
-  // Reserve space for name labels on the right so text never clips.
-  // lblX = cx + r + 4 + 2*STK_W + STK_GAP + 4; we want lblX + TEXT_RESERVE ≤ w
-  const TEXT_RESERVE = Math.max(60, Math.round(w * 0.30))
-  const COIN_MAX_X   = w - COIN_R_BIG - 4 - 2 * Math.max(7, Math.round(COIN_R * 0.62)) - Math.max(2, Math.round(COIN_R * 0.14)) - 4 - TEXT_RESERVE
+  const arcSpan   = arcSpanV
   const ARC_X_MIN = Math.min(arcStart, COIN_MAX_X)
   const ARC_X_MAX = Math.min(arcStart + arcSpan, COIN_MAX_X)
 
@@ -228,7 +248,7 @@ export default function DevNumberCardFan({
     <div ref={wrapRef} style={{ width: '100%', height: '100%', overflow: 'visible', display: 'flex', flexDirection: 'column' }}>
       {!showInlineRound && (
         <div style={{ margin: '0 0 4px', textAlign: 'center', flexShrink: 0, display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.4em' }}>
-          <span style={{ fontFamily: "'MonsterHeadline', sans-serif", fontWeight: 900, fontSize: roundFontSize, color: '#111', lineHeight: 1 }}>
+          <span style={{ fontFamily: "'MonsterHeadline', sans-serif", fontWeight: 900, fontSize: roundFontSize, color: '#111', lineHeight: 1, whiteSpace: 'nowrap' }}>
             Round {roundNumber}/{totalRounds}
           </span>
           {isRedemption && (
@@ -248,7 +268,7 @@ export default function DevNumberCardFan({
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4em',
             pointerEvents: 'none', zIndex: 3,
           }}>
-            <span style={{ fontFamily: "'MonsterHeadline', sans-serif", fontWeight: 900, fontSize: roundFontSize, color: '#111', lineHeight: 1 }}>
+            <span style={{ fontFamily: "'MonsterHeadline', sans-serif", fontWeight: 900, fontSize: roundFontSize, color: '#111', lineHeight: 1, whiteSpace: 'nowrap' }}>
               Round {roundNumber}/{totalRounds}
             </span>
             {isRedemption && (

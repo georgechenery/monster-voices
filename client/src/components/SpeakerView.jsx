@@ -1,14 +1,45 @@
 import { useState, useEffect, useRef } from 'react'
 import { MONSTERS } from '../data/monsters'
+import { WIDE_CONTENT_MONSTERS, MEDIUM_CONTENT_MONSTERS } from '../data/wideContentMonsters'
 import { GRID_LAYOUTS } from '../data/gridLayouts'
 import cardBack from '../assets/monsters/card-back.png'
 import { useWebRTC } from '../hooks/useWebRTC'
 import ChatPanel from './ChatPanel'
 import Scoreboard from './Scoreboard'
 import HelpOverlay from './HelpOverlay'
+import DevNumberCardFan from './DevNumberCardFan'
+import QuoteCard from './QuoteCard'
 import mvLogo from '../assets/brand/mv-logo.png'
 import { playSound, playDealSounds, preloadSounds, playDrumroll, stopDrumroll } from '../utils/sounds'
 import { setGameplayMuted } from '../utils/music'
+import { AVATARS } from '../data/avatars'
+import AvatarA1 from './AvatarA1'
+import AvatarA2 from './AvatarA2'
+import AvatarA3 from './AvatarA3'
+import AvatarA4 from './AvatarA4'
+import AvatarA5 from './AvatarA5'
+import AvatarA6 from './AvatarA6'
+import AvatarA8 from './AvatarA8'
+import AvatarA9 from './AvatarA9'
+import AvatarA10 from './AvatarA10'
+import AvatarA11 from './AvatarA11'
+
+function renderAvatarComponent(avatarId) {
+  const style = { width: '100%', height: '100%' }
+  switch (avatarId) {
+    case 0:  return <AvatarA1  style={style} />
+    case 1:  return <AvatarA2  style={style} />
+    case 2:  return <AvatarA3  style={style} />
+    case 3:  return <AvatarA4  style={style} />
+    case 4:  return <AvatarA5  style={style} />
+    case 5:  return <AvatarA6  style={style} />
+    case 7:  return <AvatarA8  style={style} />
+    case 8:  return <AvatarA9  style={style} />
+    case 9:  return <AvatarA10 style={style} />
+    case 10: return <AvatarA11 style={style} />
+    default: return <img src={AVATARS[avatarId]} alt="" style={style} />
+  }
+}
 
 const MIC_ERRORS = {
   needs_https: "You need a secure connection (https://). Change the URL and accept the browser warning.",
@@ -26,7 +57,7 @@ function buildDisplayBars(history) {
 }
 
 export default function SpeakerView({ roundState, myMonster, guessResult, scores, players = [], socket, flippedPositions = [], quoteFlipKey = 0, cardRevealActive = false, activeEmotes = {}, chatMessages = [], onSendChat, onSendEmote, myPlayer }) {
-  const { quote, phase, shuffledMonsters } = roundState
+  const { quote, phase, shuffledMonsters, speakingOrder = [], speakerStatuses = {}, currentSpeakerId, spotterId, roundNumber, totalRounds } = roundState
 
   // 'ready' | 'waiting' | 'speaking' | 'review' | 'done'
   const [stage, setStage] = useState('ready')
@@ -44,6 +75,14 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
   const countdownIntervalRef = useRef(null)
   const stageRef = useRef(stage)
 
+  const [turnOrderPhase, setTurnOrderPhase] = useState(null)
+  const [chatPhase, setChatPhase] = useState(null)
+  const turnOrderCloseRef = useRef(null)
+  const chatCloseRef = useRef(null)
+  const [avatarPulse, setAvatarPulse] = useState(true)
+  const [chatUnread, setChatUnread] = useState(false)
+  const prevChatLenRef = useRef(chatMessages.length)
+
   const monsterRef = useRef(null)
   const micRef = useRef(null)
 
@@ -51,6 +90,50 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
     startMic, stopForReview, stopMicOnly, uploadBlob, stopMicAndUpload,
     micLevel, waveformHistory,
   } = useWebRTC(socket, true, false, null)
+
+  // Reset avatar pulse at the start of each new round
+  useEffect(() => { setAvatarPulse(true) }, [roundNumber])
+
+  // Track chat unread messages when popout is closed
+  useEffect(() => {
+    const newCount = chatMessages.length - prevChatLenRef.current
+    if (newCount > 0 && chatPhase === null) setChatUnread(true)
+    prevChatLenRef.current = chatMessages.length
+  }, [chatMessages, chatPhase])
+
+  useEffect(() => () => {
+    clearTimeout(turnOrderCloseRef.current)
+    clearTimeout(chatCloseRef.current)
+  }, [])
+
+  const openTurnOrder = () => {
+    clearTimeout(turnOrderCloseRef.current)
+    setTurnOrderPhase('open')
+  }
+  const closeTurnOrder = () => {
+    setTurnOrderPhase('closing')
+    turnOrderCloseRef.current = setTimeout(() => setTurnOrderPhase(null), 260)
+  }
+  const handleStatusBtnClick = () => {
+    setAvatarPulse(false)
+    if (chatPhase === 'open') closeChat()
+    if (turnOrderPhase === 'open') closeTurnOrder()
+    else if (!turnOrderPhase) openTurnOrder()
+  }
+  const openChat = () => {
+    if (turnOrderPhase === 'open') closeTurnOrder()
+    clearTimeout(chatCloseRef.current)
+    setChatUnread(false)
+    setChatPhase('open')
+  }
+  const closeChat = () => {
+    setChatPhase('closing')
+    chatCloseRef.current = setTimeout(() => setChatPhase(null), 260)
+  }
+  const handleChatBtnClick = () => {
+    if (chatPhase === 'open') closeChat()
+    else if (!chatPhase) openChat()
+  }
 
   // Preload sounds when component mounts
   useEffect(() => { preloadSounds() }, [])
@@ -217,14 +300,101 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
 
       {/* Header */}
       <div className="waiting-header">
-        <div className="speaker-instruction-block">
-          <h2 className={`speaker-instruction-title${countdown !== null ? ' title-countdown' : ''}`}>
-            {countdown !== null ? `Auto-submitting in ${countdown}s` : 'Your Turn to Speak!'}
-          </h2>
-          <p className="speaker-instruction-sub">Read the <span className="amber-text">Words of Wisdom</span> in your monster's voice — try to get <strong>{spotterName}</strong> to guess who you are!</p>
+        {/* Mobile-only left column: [avatar+chat buttons] row + WoW card below */}
+        <div className="ssv-mobile-left">
+          <div className="ssv-mobile-btns">
+            <button
+              className={`ssv-speaker-btn${turnOrderPhase === 'open' ? ' is-open' : ''}`}
+              onClick={handleStatusBtnClick}
+              aria-label="Show turn order"
+            >
+              <div className={`ssv-speaker-circle${avatarPulse ? ' is-pulsing' : ''}`}>
+                {renderAvatarComponent(myPlayer?.avatarId ?? 0)}
+              </div>
+            </button>
+            <button
+              className={`msv-chat-btn${chatPhase === 'open' ? ' is-open' : ''}`}
+              onClick={handleChatBtnClick}
+              aria-label="Open chat"
+            >
+              <div className={`msv-chat-btn-icon${chatUnread ? ' is-pulsing' : ''}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+              </div>
+            </button>
+          </div>
+          <div className="ssv-wow-wrap">
+            <QuoteCard quote={quote} flipKey={quoteFlipKey} highlight={stage !== 'done' ? 'solid' : undefined} />
+          </div>
+        </div>
+        {/* display:contents on desktop so layout is unchanged */}
+        <div className="ssv-header-text">
+          <div className="ssv-header-logo-wrap">
+            <img src={mvLogo} alt="Monster Voices" className="ssv-header-logo" />
+          </div>
+          <div className="speaker-instruction-block">
+            <h2 className={`speaker-instruction-title${countdown !== null ? ' title-countdown' : ''}`}>
+              {countdown !== null ? `Auto-submitting in ${countdown}s` : 'Your Turn to Speak!'}
+            </h2>
+            <p className="speaker-instruction-sub">Read the <span className="amber-text">Words of Wisdom</span> in your monster's voice — try to get <strong>{spotterName}</strong> to guess who you are!</p>
+          </div>
         </div>
         <button className="btn-help" onClick={() => setShowHelp(true)}>?</button>
       </div>
+
+      {/* Turn order popout */}
+      {turnOrderPhase && (
+        <div
+          className={`msv-turn-order-overlay${turnOrderPhase === 'closing' ? ' is-closing' : ''}`}
+          onClick={() => { if (turnOrderPhase === 'open') closeTurnOrder() }}
+        >
+          <div
+            className="msv-turn-order-panel"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="msv-turn-order-fan-wrap">
+              <DevNumberCardFan
+                players={players}
+                spotterId={spotterId}
+                speakingOrder={speakingOrder}
+                speakerStatuses={speakerStatuses}
+                currentSpeakerId={currentSpeakerId}
+                myPlayerId={myPlayer?.id}
+                phase={phase}
+                roundNumber={roundNumber ?? 1}
+                totalRounds={totalRounds ?? 1}
+                activeEmotes={activeEmotes}
+              />
+            </div>
+            {scores && scores.length > 0 && (
+              <div className="msv-scorebug">
+                {[...scores].sort((a, b) => b.score - a.score).map(p => (
+                  <div key={p.id} className="msv-scorebug-item">
+                    <span className="msv-scorebug-name">{p.name}</span>
+                    <span className="msv-scorebug-score">{p.score}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Chat popout */}
+      {chatPhase && (
+        <div
+          className={`msv-turn-order-overlay${chatPhase === 'closing' ? ' is-closing' : ''}`}
+          onClick={() => { if (chatPhase === 'open') closeChat() }}
+        >
+          <div
+            className="msv-chat-popout-panel"
+            onClick={e => e.stopPropagation()}
+          >
+            <ChatPanel messages={chatMessages} onSend={onSendChat} myPlayer={myPlayer} onSendEmote={onSendEmote} popout />
+          </div>
+        </div>
+      )}
 
       {/* Peek request modal */}
       {peekRequests.length > 0 && (
@@ -247,7 +417,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
       <div className="waiting-body">
         {/* Monster grid */}
         <div className="waiting-grid-col">
-          <div className="monster-grid monster-grid-fill">
+          <div className={`monster-grid monster-grid-fill${(GRID_LAYOUTS[shuffledMonsters.length] ?? GRID_LAYOUTS[9]).length <= 2 ? ' monster-grid-2rows' : ''}`}>
             {(GRID_LAYOUTS[shuffledMonsters.length] ?? GRID_LAYOUTS[9]).reduce((rows, cols, rowIdx) => {
               const startPos = rows.nextPos
               rows.nextPos += cols
@@ -277,7 +447,7 @@ export default function SpeakerView({ roundState, myMonster, guessResult, scores
                             showCorrect ? 'monster-card-correct' : '',
                             showWrong ? 'monster-card-wrong' : '',
                           ].filter(Boolean).join(' ')}>
-                            <img src={MONSTERS[monsterIndex]} alt={`Monster ${monsterIndex + 1}`} className="monster-img" />
+                            <img src={MONSTERS[monsterIndex]} alt={`Monster ${monsterIndex + 1}`} className={`monster-img${WIDE_CONTENT_MONSTERS.has(monsterIndex) ? ' monster-img-wide' : MEDIUM_CONTENT_MONSTERS.has(monsterIndex) ? ' monster-img-medium' : ''}`} />
                             <div className="monster-position-label"></div>
                           </div>
                           <div className="monster-card monster-card-face monster-card-back">

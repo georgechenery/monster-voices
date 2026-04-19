@@ -46,7 +46,7 @@ export default function GauntletGame({ myPlayer, players, gauntletState, myMonst
       <div className="game-chat-layout game-chat-layout-rtg">
         <div className="game-left-col">
           <div className={isPig ? 'quote-card-amber-wrap' : ''}>
-            <QuoteCard quote={gauntletState.quote} flipKey={quoteFlipKey} />
+            <QuoteCard quote={gauntletState.quote} flipKey={quoteFlipKey} highlight={isPig ? 'solid' : undefined} />
           </div>
           <div className="game-left-fan-wrap gauntlet-fan-wrap">
             <GauntletSidePanel

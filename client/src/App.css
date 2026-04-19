@@ -3326,6 +3326,18 @@ body {
     display: flex;
   }
 
+  /* In the MSV chat popout, override drawer styles so it fills the rounded panel */
+  .msv-chat-popout-panel .chat-panel.chat-panel-popout {
+    position: static;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    flex: 1;
+  }
+
   .chat-panel.chat-panel-mobile-open .chat-messages {
     max-height: none;
     flex: 1;
@@ -3592,11 +3604,29 @@ body {
 }
 
 .monster-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   border-radius: 6px;
   transform: scale(1.12);
+}
+
+/* Portrait-rectangle layout: zoom in more aggressively to fill the card */
+.monster-grid-2rows .monster-img {
+  transform: scale(1.2);
+}
+
+/* Medium-content monsters: 16.7–22.2% margins — cover but no extra scale */
+.monster-grid-2rows .monster-img-medium {
+  transform: none;
+}
+
+/* Wide-content monsters: < 16.7% margins — contain to avoid clipping */
+.monster-grid-2rows .monster-img-wide {
+  object-fit: contain;
+  transform: none;
 }
 
 .monster-position-label {
@@ -5246,6 +5276,10 @@ body {
   background: #111 !important;
 }
 
+.monster-card-back .monster-img {
+  transform: none;
+}
+
 /* ===== QUOTE CARD — PHYSICAL CARD LOOK ===== */
 .quote-card-scene {
   perspective: 1000px;
@@ -6355,14 +6389,7 @@ body {
   aspect-ratio: 1;
   max-width: none !important;
   margin: 0 auto !important;
-}
-
-/* monster-grid must fill its container so flex:1 rows have definite height */
-.monster-grid-fill > .monster-grid {
-  max-width: none;
-  width: 100%;
-  height: 100%;
-  margin: 0;
+  justify-content: center;
 }
 
 /* Non-uniform rows: when a 3-col row exists, 2-col rows use same card size & center */
@@ -6401,6 +6428,9 @@ body {
 /* Pan up on hover: same scale, just shifted */
 .monster-card-flipper-clickable:hover .monster-img {
   transform: scale(1.12) translateY(-5%);
+}
+.monster-grid-2rows .monster-card-flipper-clickable:hover .monster-img {
+  transform: scale(1.2) translateY(-5%);
 }
 
 /* Remove the scale that was on the card itself */
@@ -7007,6 +7037,28 @@ body {
   opacity: 0.9;
 }
 
+/* ===== MONSTER SPOTTER VIEW — mobile header elements =====
+   Hidden on desktop; the @media (max-width: 750px) block below activates them. */
+.msv-mobile-left        { display: none; }
+.msv-header-text        { display: contents; } /* transparent wrapper on desktop */
+.msv-turn-order-overlay { display: none; }
+.msv-header-logo-wrap   { display: none; } /* shown only in mobile spotter header */
+.msv-header-logo        { display: none; }
+
+/* ===== AUDIENCE VIEW — mobile header elements =====
+   Hidden on desktop; the @media (max-width: 750px) block below activates them. */
+.wav-mobile-left     { display: none; }
+.wav-header-text     { display: contents; } /* transparent wrapper on desktop */
+.wav-header-logo-wrap { display: none; }
+.wav-header-logo     { display: none; }
+
+/* ===== SPEAKER VIEW — mobile header elements =====
+   Hidden on desktop; the @media (max-width: 750px) block below activates them. */
+.ssv-mobile-left     { display: none; }
+.ssv-header-text     { display: contents; } /* transparent wrapper on desktop */
+.ssv-header-logo-wrap { display: none; }
+.ssv-header-logo     { display: none; }
+
 /* Player names in status/subtitle text use MonsterHeadline — bypasses the broken bold fallback
    and matches the user-visible design intent (headline font for names). */
 .speaker-instruction-sub strong,
@@ -7059,6 +7111,13 @@ body {
   box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
   background: #f4f4f4;
 }
+
+/* Solid yellow border — audience view, upcoming turn */
+.quote-card-physical.quote-card-highlight-solid {
+  border-color: #f0b429;
+  box-shadow: 0 0 0 2px #f0b429, 4px 4px 0 rgba(0,0,0,0.2);
+}
+
 
 /* ======================================================
    WAITING ROOM — MODE SELECTOR & GAUNTLET PIG PICKER
@@ -7718,6 +7777,803 @@ body {
     flex-direction: column;
     grid-template-columns: unset;
   }
+
+  /* ---- Monster Spotter View — mobile header --------------------------------
+     Hide the outer game-left-col strip (WoW card lives inside the header now).
+     Everything below is scoped to .view-spotter so no other view is affected. */
+  body:has(.view-spotter) {
+    overflow: hidden;
+    height: 100dvh;
+  }
+  html:has(.view-spotter) {
+    overflow: hidden;
+    height: 100dvh;
+  }
+
+  body:has(.view-spotter) .game-left-col {
+    display: none;
+  }
+
+  /* Header becomes a two-column row: left=[avatar+WoW], right=[logo+title+sub] */
+  .view-spotter .waiting-header {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 6px;
+    padding: 6px 8px 6px 8px;
+    justify-content: flex-start;
+  }
+
+  /* Left column — activate; 40% of header via flex ratio */
+  .msv-mobile-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 2 0 0;
+    min-width: 0;
+    gap: 10px;
+  }
+
+  /* Row containing avatar + chat buttons side by side */
+  .msv-mobile-btns {
+    display: flex;
+    flex-direction: row;
+    flex-shrink: 0;
+    height: 60px;
+    width: 100%;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Both circular buttons share base styles */
+  .msv-spotter-btn,
+  .msv-chat-btn {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Avatar circle — yellow ring */
+  .msv-spotter-btn-avatar {
+    border-radius: 50%;
+    overflow: hidden;
+    background: #fff;
+    border: 3px solid #f0b429;
+    box-sizing: border-box;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    width: 100%;
+    aspect-ratio: 1;
+    max-width: 52px;
+  }
+
+  .msv-spotter-btn-avatar.is-pulsing {
+    animation: msv-pulse 1.6s ease-in-out infinite;
+  }
+
+  .msv-spotter-btn.is-open .msv-spotter-btn-avatar {
+    animation: none;
+    box-shadow: 0 0 0 5px rgba(240,180,41,0.35), 0 2px 8px rgba(0,0,0,0.18);
+  }
+
+  @keyframes msv-pulse {
+    0%,100% { box-shadow: 0 2px 8px rgba(0,0,0,0.18), 0 0 0 0   rgba(240,180,41,0.7); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.18), 0 0 0 7px rgba(240,180,41,0.0); }
+  }
+
+  /* Chat circle — grey ring with speech bubble */
+  .msv-chat-btn-icon {
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #888;
+    box-sizing: border-box;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    width: 100%;
+    aspect-ratio: 1;
+    max-width: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+  }
+
+  .msv-chat-btn-icon svg {
+    width: 52%;
+    height: 52%;
+  }
+
+  .msv-chat-btn.is-open .msv-chat-btn-icon {
+    box-shadow: 0 0 0 5px rgba(136,136,136,0.3), 0 2px 8px rgba(0,0,0,0.18);
+    border-color: #555;
+  }
+
+  @keyframes msv-chat-notify {
+    0%,100% { box-shadow: 0 2px 8px rgba(0,0,0,0.18), 0 0 0 0   rgba(74,144,217,0.7); border-color: #4a90d9; }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.18), 0 0 0 7px rgba(74,144,217,0.0); border-color: #4a90d9; }
+  }
+  .msv-chat-btn-icon.is-pulsing {
+    animation: msv-chat-notify 1.4s ease-in-out infinite;
+    border-color: #4a90d9;
+  }
+
+  /* WoW card: width chosen so height ≈ title+subtitle height (~94px) */
+  .msv-wow-wrap {
+    width: 100%;
+    max-width: 140px;
+    flex-shrink: 0;
+    margin: 0 auto;
+  }
+  .msv-wow-wrap .quote-card-scene {
+    width: 100%;
+    height: auto;
+    margin: 0;
+  }
+
+  /* Right column — 60% via flex ratio; logo at top, text aligned with WoW card top */
+  .msv-header-text {
+    display: flex;
+    flex: 3 0 0;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 0;
+  }
+  .msv-header-text .speaker-instruction-block {
+    width: 100%;
+    flex-shrink: 0;
+  }
+  /* Title: compact, no desktop chrome */
+  .view-spotter .msv-header-text .speaker-instruction-title {
+    text-align: center;
+    white-space: normal;
+    padding: 0.05rem 0.2rem;
+    background: none;
+    width: 100%;
+    font-size: 0.85rem;
+    line-height: 1.1;
+  }
+  .view-spotter .msv-header-text .speaker-instruction-title.title-countdown {
+    color: #ff4444;
+  }
+  /* Subtitle at bottom, compact */
+  .view-spotter .msv-header-text .speaker-instruction-sub {
+    text-align: center;
+    padding: 0 0.2rem 2px;
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+
+  /* Logo wrap: matches avatar row height exactly */
+  .msv-header-logo-wrap {
+    display: flex;
+    flex-shrink: 0;
+    height: 60px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+  }
+
+  /* Logo: fills the 60px row */
+  .msv-header-logo {
+    display: block;
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+  }
+
+  /* Hide ? help button — redundant on mobile spotter view */
+  .view-spotter .btn-help {
+    display: none;
+  }
+
+  /* Grid col must not scroll — layout handles sizing via the grid calc */
+  .view-spotter .waiting-grid-col {
+    overflow: hidden;
+  }
+
+  /* Grid: subtract header (~170px) + controls (~68px) + gaps/padding */
+  .view-spotter .monster-grid-fill {
+    width: min(100%, calc(100dvh - 260px));
+  }
+
+  /* Push status bar up so fixed audio controls don't cover it */
+  .view-spotter .waiting-controls {
+    padding-bottom: 47px;
+  }
+
+  /* Sound controls: fixed strip at the very bottom of the screen */
+  body:has(.view-spotter) .audio-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 8px;
+    opacity: 1;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 4px 14px;
+    border-radius: 0;
+    height: auto;
+    z-index: 50;
+  }
+
+  /* ---- Turn order popout -------------------------------------------------- */
+  .msv-turn-order-overlay {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 600;
+    align-items: center;
+    justify-content: center;
+    pointer-events: all;
+  }
+
+  .msv-turn-order-panel {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.38), 0 0 0 2px rgba(240,180,41,0.25);
+    padding: 14px 16px 12px;
+    width: 88vw;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    animation: msv-popout-in 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  }
+
+  .msv-turn-order-fan-wrap {
+    height: 220px;
+    flex-shrink: 0;
+  }
+
+  .msv-scorebug {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 10px;
+    padding: 6px 2px 0;
+    border-top: 1px solid rgba(0,0,0,0.09);
+    margin-top: 4px;
+    justify-content: center;
+  }
+
+  .msv-scorebug-item {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  .msv-scorebug-name {
+    font-family: 'MonsterHeadline', sans-serif;
+    font-size: 0.7rem;
+    color: #333;
+  }
+
+  .msv-scorebug-score {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #f0b429;
+  }
+
+  .msv-turn-order-overlay.is-closing .msv-turn-order-panel,
+  .msv-turn-order-overlay.is-closing .msv-chat-popout-panel {
+    animation: msv-popout-out 0.22s ease-in forwards;
+  }
+
+  /* Chat popout panel */
+  .msv-chat-popout-panel {
+    background: #fff;
+    border-radius: 18px;
+    border: 2px solid #000;
+    width: 88vw;
+    max-width: 360px;
+    height: 68vh;
+    max-height: 480px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: msv-popout-in 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  }
+
+  @keyframes msv-popout-in {
+    from { transform: scale(0.08); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+  @keyframes msv-popout-out {
+    from { transform: scale(1);    opacity: 1; }
+    to   { transform: scale(0.08); opacity: 0; }
+  }
+
+  /* ---- Audience View — mobile layout ----------------------------------------
+     Carbon copy of spotter north-star layout:
+     left col = [status-circle + chat buttons] row + logo below
+     right col = instruction title + subtitle */
+  body:has(.view-audience) {
+    overflow: hidden;
+    height: 100dvh;
+  }
+  html:has(.view-audience) {
+    overflow: hidden;
+    height: 100dvh;
+  }
+
+  body:has(.view-audience) .game-left-col {
+    display: none;
+  }
+
+  /* Header: two-column row — same structure as spotter */
+  .view-audience .waiting-header {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 6px;
+    padding: 6px 8px 6px 8px;
+    justify-content: flex-start;
+  }
+
+  /* Left column — 40% width; btns row + logo below */
+  .wav-mobile-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 2 0 0;
+    min-width: 0;
+    gap: 10px;
+  }
+
+  /* Row with status circle + chat buttons */
+  .wav-mobile-btns {
+    display: flex;
+    flex-direction: row;
+    flex-shrink: 0;
+    height: 60px;
+    width: 100%;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Both buttons share base styles (same as spotter) */
+  .wav-status-btn {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Status circle — default: amber ring (waiting / number state) */
+  .wav-status-circle {
+    border-radius: 50%;
+    overflow: hidden;
+    background: #fff;
+    border: 3px solid #f0b429;
+    box-sizing: border-box;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    width: 100%;
+    aspect-ratio: 1;
+    max-width: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .wav-status-circle.is-pulsing {
+    animation: msv-pulse 1.6s ease-in-out infinite;
+  }
+
+  /* When turn order panel is open, freeze the pulse */
+  .wav-status-btn.is-open .wav-status-circle {
+    animation: none;
+    box-shadow: 0 0 0 5px rgba(240,180,41,0.35), 0 2px 8px rgba(0,0,0,0.18);
+  }
+
+  /* Correctly guessed: green border, no pulse */
+  .wav-status-circle.wav-status-circle-correct {
+    border-color: #2ecc71;
+    animation: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  }
+
+  /* Guessed wrong twice: red border, no pulse */
+  .wav-status-circle.wav-status-circle-wrong {
+    border-color: #e74c3c;
+    animation: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  }
+
+  /* Circle content wrapper — fades in on each swap */
+  .wav-circle-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: wav-circle-fade-in 0.4s ease;
+  }
+  @keyframes wav-circle-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Turns-away number — MonsterHeadline, breathes gently */
+  .wav-turns-number {
+    font-family: 'MonsterHeadline', sans-serif;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    animation: wav-number-breathe 2.4s ease-in-out infinite;
+  }
+  .wav-turns-number.wav-turns-number-single {
+    font-size: 2.2rem;
+  }
+  @keyframes wav-number-breathe {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.14); }
+  }
+
+  /* WoW card — same slot and sizing as spotter's msv-wow-wrap */
+  .wav-wow-wrap {
+    width: 100%;
+    max-width: 140px;
+    flex-shrink: 0;
+    margin: 0 auto;
+  }
+  .wav-wow-wrap .quote-card-scene {
+    width: 100%;
+    height: auto;
+    margin: 0;
+  }
+
+  /* Right column — 60% width; logo at top then title+subtitle (mirrors spotter exactly) */
+  .wav-header-text {
+    display: flex;
+    flex: 3 0 0;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 0;
+  }
+
+  .wav-header-text .speaker-instruction-block {
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  /* Logo — at top of right col, matching the 60px buttons-row height */
+  .wav-header-logo-wrap {
+    display: flex;
+    flex-shrink: 0;
+    height: 60px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+  }
+
+  .wav-header-logo {
+    display: block;
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+  }
+
+  .view-audience .wav-header-text .speaker-instruction-title {
+    text-align: center;
+    white-space: normal;
+    padding: 0.05rem 0.2rem;
+    background: none;
+    width: 100%;
+    font-size: 1.05rem;
+    line-height: 1.15;
+  }
+
+  .view-audience .wav-header-text .speaker-instruction-sub {
+    text-align: center;
+    padding: 0 0.1rem 2px;
+    font-size: 0.84rem;
+    line-height: 1.3;
+  }
+
+  /* Kill padding-right added for help button — not shown on mobile */
+  .game-view-wrap > .view-audience .wav-header-text .speaker-instruction-sub {
+    padding-right: 0.1rem;
+  }
+
+  /* Hide ? help button */
+  .view-audience .btn-help {
+    display: none;
+  }
+
+  /* Hide "Blake is speaking" — redundant with subtitle */
+  .view-audience .status-speaking {
+    display: none;
+  }
+
+  /* Hide "Available after X has spoken" — saves height in controls */
+  .view-audience .action-duo-note {
+    display: none;
+  }
+
+  /* Kill the white box that the 768px sticky rule adds to .waiting-controls */
+  .view-audience .waiting-controls {
+    background: transparent;
+  }
+
+  /* Reduce controls height: with status banner + note hidden, only
+     action-duo-row (42px) + 47px audio clearance needed = ~96px */
+  .waiting-layout.view-audience .waiting-controls-audience {
+    flex: 0 0 96px;
+    max-height: 96px;
+    min-height: 96px;
+  }
+
+  /* Grid col must not scroll */
+  .view-audience .waiting-grid-col {
+    overflow: hidden;
+  }
+
+  /* Grid: header ~185px (btns 60 + gap 10 + WoW 103 + padding 12)
+     + controls 96px + gaps ~5px = ~286px → -295px formula */
+  .view-audience .monster-grid-fill {
+    width: min(100%, calc(100dvh - 295px));
+  }
+
+  /* Push controls content up so fixed audio strip doesn't cover it */
+  .view-audience .waiting-controls {
+    padding-bottom: 47px;
+  }
+
+  /* Audio controls: fixed strip at bottom — transparent so it doesn't box out */
+  body:has(.view-audience) .audio-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 8px;
+    opacity: 1;
+    background: transparent;
+    padding: 4px 14px;
+    border-radius: 0;
+    height: auto;
+    z-index: 50;
+  }
+
+  /* ---- Speaker View — mobile layout ----------------------------------------
+     Same north-star pattern as spotter + audience:
+     left col = [avatar+chat buttons] + WoW card
+     right col = logo + title + subtitle */
+  body:has(.view-speaker) {
+    overflow: hidden;
+    height: 100dvh;
+  }
+  html:has(.view-speaker) {
+    overflow: hidden;
+    height: 100dvh;
+  }
+
+  body:has(.view-speaker) .game-left-col {
+    display: none;
+  }
+
+  .view-speaker .waiting-header {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 6px;
+    padding: 6px 8px 6px 8px;
+    justify-content: flex-start;
+  }
+
+  /* Left column — 40% width */
+  .ssv-mobile-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 2 0 0;
+    min-width: 0;
+    gap: 10px;
+  }
+
+  .ssv-mobile-btns {
+    display: flex;
+    flex-direction: row;
+    flex-shrink: 0;
+    height: 60px;
+    width: 100%;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Speaker circle button — amber pulsing (it's their turn right now) */
+  .ssv-speaker-btn {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ssv-speaker-circle {
+    border-radius: 50%;
+    overflow: hidden;
+    background: #fff;
+    border: 3px solid #f0b429;
+    box-sizing: border-box;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    width: 100%;
+    aspect-ratio: 1;
+    max-width: 52px;
+  }
+
+  .ssv-speaker-circle.is-pulsing {
+    animation: msv-pulse 1.6s ease-in-out infinite;
+  }
+
+  .ssv-speaker-btn.is-open .ssv-speaker-circle {
+    animation: none;
+    box-shadow: 0 0 0 5px rgba(240,180,41,0.35), 0 2px 8px rgba(0,0,0,0.18);
+  }
+
+  /* WoW card — same slot as spotter */
+  .ssv-wow-wrap {
+    width: 100%;
+    max-width: 140px;
+    flex-shrink: 0;
+    margin: 0 auto;
+  }
+  .ssv-wow-wrap .quote-card-scene {
+    width: 100%;
+    height: auto;
+    margin: 0;
+  }
+
+  /* Right column — 60% width; logo at top then title+subtitle */
+  .ssv-header-text {
+    display: flex;
+    flex: 3 0 0;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 0;
+  }
+
+  .ssv-header-text .speaker-instruction-block {
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .ssv-header-logo-wrap {
+    display: flex;
+    flex-shrink: 0;
+    height: 60px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+  }
+
+  .ssv-header-logo {
+    display: block;
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+  }
+
+  .view-speaker .ssv-header-text .speaker-instruction-title {
+    text-align: center;
+    white-space: normal;
+    padding: 0.05rem 0.2rem;
+    background: none;
+    width: 100%;
+    font-size: 1.05rem;
+    line-height: 1.15;
+  }
+  .view-speaker .ssv-header-text .speaker-instruction-title.title-countdown {
+    color: #ff4444;
+  }
+
+  .view-speaker .ssv-header-text .speaker-instruction-sub {
+    text-align: center;
+    padding: 0 0.1rem 2px;
+    font-size: 0.84rem;
+    line-height: 1.3;
+  }
+
+  .game-view-wrap > .view-speaker .ssv-header-text .speaker-instruction-sub {
+    padding-right: 0.1rem;
+  }
+
+  /* Hide help button and turn popup — header already gives context */
+  .view-speaker .btn-help    { display: none; }
+  .view-speaker .turn-popup  { display: none; }
+
+  /* Hide connection status — saves height in controls */
+  .view-speaker .connection-status { display: none; }
+
+  /* Compact waveform so recording card fits in the reduced controls box */
+  .view-speaker .mic-waveform {
+    height: 20px;
+    min-height: 0;
+  }
+  .view-speaker .waveform-bar {
+    max-height: 18px;
+  }
+
+  /* Kill the white sticky-controls background from the 768px rule */
+  .view-speaker .waiting-controls {
+    background: transparent;
+  }
+
+  /* Reduce controls: recording card (22+20+44=86px) + 47px audio = 133px → 140px */
+  .waiting-layout.view-speaker .waiting-controls-speaker {
+    flex: 0 0 140px;
+    max-height: 140px;
+    min-height: 140px;
+    justify-content: flex-start;
+  }
+
+  .view-speaker .waiting-grid-col {
+    overflow: hidden;
+  }
+
+  /* Grid: header ~185px + controls 140px + gaps ~5px = 330px → -340px */
+  .view-speaker .monster-grid-fill {
+    width: min(100%, calc(100dvh - 340px));
+  }
+
+  .view-speaker .waiting-controls {
+    padding-bottom: 47px;
+  }
+
+  body:has(.view-speaker) .audio-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 8px;
+    opacity: 1;
+    background: transparent;
+    padding: 4px 14px;
+    border-radius: 0;
+    height: auto;
+    z-index: 50;
+  }
 }
 
 /* =====================================================
@@ -7857,6 +8713,11 @@ body {
   /* Pad subtitle so text wraps before reaching the help button */
   .game-view-wrap > .waiting-layout .speaker-instruction-sub {
     padding-right: 52px;
+  }
+
+  /* Spotter view hides the ? button, so kill the 52px indent */
+  .game-view-wrap > .view-spotter .msv-header-text .speaker-instruction-sub {
+    padding-right: 0.2rem;
   }
 
   /* ---- Speaker button: make the grid column scrollable so the button is

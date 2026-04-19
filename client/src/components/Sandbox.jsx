@@ -157,7 +157,8 @@ function buildState({ players, spotterId, speakingOrder, assignments, shuffledMo
 // ── Floating dev controls ──────────────────────────────────────────────────────
 
 function DevControls({ playerCount, setPlayerCount, viewAsIdx, setViewAsIdx, speakerIdx, setSpeakerIdx, phase, setPhase, roundNum, setRoundNum, difficulty, setDifficulty, players, speakingOrder, onClose, roleTag }) {
-  const [pos,     setPos]  = useState({ right: 14, bottom: 14 })
+  const [pos,       setPos]       = useState({ right: 14, bottom: 14 })
+  const [minimized, setMinimized] = useState(false)
   const dragging  = useRef(false)
   const dragStart = useRef(null)
 
@@ -195,20 +196,26 @@ function DevControls({ playerCount, setPlayerCount, viewAsIdx, setViewAsIdx, spe
       position: 'fixed', bottom: pos.bottom, right: pos.right,
       background: 'rgba(0,0,0,0.92)', border: '1px solid rgba(255,255,255,0.1)',
       borderRadius: 10, padding: '10px 12px',
-      display: 'flex', flexDirection: 'column', gap: 8,
+      display: 'flex', flexDirection: 'column', gap: minimized ? 0 : 8,
       zIndex: 9999, backdropFilter: 'blur(8px)',
-      minWidth: 220, boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+      minWidth: minimized ? 0 : 220, boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
     }}>
       {/* Header / drag handle */}
-      <div onMouseDown={onHeaderDown} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'grab', userSelect: 'none' }}>
-        <span style={{ color: '#f0b429', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', fontFamily: 'monospace' }}>
+      <div onMouseDown={onHeaderDown} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'grab', userSelect: 'none', gap: 8 }}>
+        <span style={{ color: '#f0b429', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
           ⠿ SANDBOX · <span style={{ color: '#aaa' }}>{roleTag}</span>
         </span>
-        <button onClick={onClose} onMouseDown={e => e.stopPropagation()} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 11, padding: 0 }}>
-          ← back
-        </button>
+        <div style={{ display: 'flex', gap: 4 }} onMouseDown={e => e.stopPropagation()}>
+          <button onClick={() => setMinimized(m => !m)} style={{ background: 'none', border: 'none', color: '#f0b429', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1 }}>
+            {minimized ? '▲' : '▼'}
+          </button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 11, padding: 0 }}>
+            ← back
+          </button>
+        </div>
       </div>
 
+      {!minimized && <>
       {/* Player count */}
       <div>
         <div style={{ color: '#555', fontSize: 8, marginBottom: 4, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'monospace' }}>Players</div>
@@ -277,6 +284,7 @@ function DevControls({ playerCount, setPlayerCount, viewAsIdx, setViewAsIdx, spe
           {Array.from({ length: playerCount }, (_, i) => btn(i + 1, roundNum === i + 1, () => setRoundNum(i + 1)))}
         </div>
       </div>
+      </>}
     </div>
   )
 }
@@ -323,7 +331,7 @@ export default function Sandbox({ onClose }) {
       {/* Identical layout to GameView so real CSS rules apply */}
       <div className="game-chat-layout">
         <div className="game-left-col">
-          <div className={isSpotter ? 'quote-card-amber-wrap' : ''}>
+          <div className={isSpeaker ? 'quote-card-amber-wrap' : ''}>
             <QuoteCard quote={roundState.quote} flipKey={0} />
           </div>
           <div className="game-left-fan-wrap">

@@ -85,7 +85,7 @@ export default function GameView({
 
       <div className="game-chat-layout">
         <div className="game-left-col">
-          <div className={isSpotter ? 'quote-card-amber-wrap' : ''}>
+          <div className={isSpeaker ? 'quote-card-amber-wrap' : ''}>
             <QuoteCard quote={roundState.quote} flipKey={quoteFlipKey} />
           </div>
           <div className="game-left-fan-wrap">

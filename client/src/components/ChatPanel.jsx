@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { AVATARS } from '../data/avatars'
 import { EMOTES } from '../data/emotes'
 
-export default function ChatPanel({ messages, onSend, myPlayer, onSendEmote, style }) {
+export default function ChatPanel({ messages, onSend, myPlayer, onSendEmote, style, popout = false }) {
   const [text, setText] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [unread, setUnread] = useState(0)
@@ -62,10 +62,10 @@ export default function ChatPanel({ messages, onSend, myPlayer, onSendEmote, sty
   }
 
   const panelContent = (
-    <div className={`chat-panel${mobileOpen ? ' chat-panel-mobile-open' : ''}`} style={style}>
+    <div className={`chat-panel${(mobileOpen || popout) ? ' chat-panel-mobile-open' : ''}${popout ? ' chat-panel-popout' : ''}`} style={style}>
       <div className="chat-header">
         <span className="chat-title">Chat</span>
-        <button className="chat-close-btn" onClick={handleClose} aria-label="Close chat">✕</button>
+        {!popout && <button className="chat-close-btn" onClick={handleClose} aria-label="Close chat">✕</button>}
       </div>
       <div className="chat-messages">
         {messages.length === 0 && (
@@ -129,6 +129,8 @@ export default function ChatPanel({ messages, onSend, myPlayer, onSendEmote, sty
       </form>
     </div>
   )
+
+  if (popout) return panelContent
 
   return (
     <>

@@ -3,6 +3,7 @@ import { MONSTERS } from '../data/monsters'
 import cardBack from '../assets/monsters/card-back.png'
 import { useWebRTC } from '../hooks/useWebRTC'
 import { GRID_LAYOUTS } from '../data/gridLayouts'
+import { WIDE_CONTENT_MONSTERS, MEDIUM_CONTENT_MONSTERS } from '../data/wideContentMonsters'
 import ChatPanel from './ChatPanel'
 import QuoteCard from './QuoteCard'
 import mvLogo from '../assets/brand/mv-logo.png'
@@ -162,7 +163,7 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
       <div className="waiting-body">
         {/* Monster grid */}
         <div className="waiting-grid-col">
-          <div className="monster-grid monster-grid-fill">
+          <div className={`monster-grid monster-grid-fill${(GRID_LAYOUTS[numMonsters] ?? GRID_LAYOUTS[9]).length <= 2 ? ' monster-grid-2rows' : ''}`}>
             {(GRID_LAYOUTS[numMonsters] ?? GRID_LAYOUTS[9]).reduce((rows, cols, rowIdx) => {
               const startPos = rows.nextPos
               rows.nextPos += cols
@@ -190,7 +191,7 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
                             showCorrect ? 'monster-card-correct' : '',
                             showWrong ? 'monster-card-wrong' : '',
                           ].filter(Boolean).join(' ')}>
-                            <img src={MONSTERS[monsterIndex]} alt={`Monster ${monsterIndex + 1}`} className="monster-img" />
+                            <img src={MONSTERS[monsterIndex]} alt={`Monster ${monsterIndex + 1}`} className={`monster-img${WIDE_CONTENT_MONSTERS.has(monsterIndex) ? ' monster-img-wide' : MEDIUM_CONTENT_MONSTERS.has(monsterIndex) ? ' monster-img-medium' : ''}`} />
                             {votersHere.length > 0 && (
                               <div className="vote-dots">
                                 {votersHere.map((color, idx) => (
@@ -219,7 +220,7 @@ export default function PigView({ gauntletState, myMonster, quoteFlipKey, socket
               <span className="rtg-role-label-sub">voice each monster on the card</span>
             </div>
             <div className="rtg-mobile-wow">
-              <QuoteCard quote={gauntletState.quote} flipKey={quoteFlipKey} />
+              <QuoteCard quote={gauntletState.quote} flipKey={quoteFlipKey} highlight={stage !== 'done' ? 'solid' : undefined} />
             </div>
             <div className="mic-action-section">
               {!isHttps && (

@@ -3,7 +3,7 @@ import { QUOTES } from '../data/quotes'
 import quoteCardBack from '../assets/quote-card-back.png'
 
 // flipKey changes whenever we want to trigger a new flip (new round or second chance)
-export default function QuoteCard({ quote, flipKey }) {
+export default function QuoteCard({ quote, flipKey, highlight }) {
   const [isFlipped, setIsFlipped] = useState(false)
   const [displayedQuote, setDisplayedQuote] = useState(quote)
 
@@ -25,14 +25,14 @@ export default function QuoteCard({ quote, flipKey }) {
 
         {/* Back: Words of Wisdom */}
         <div className="quote-card-face quote-card-face-back">
-          <div className="quote-card-physical">
+          <div className={`quote-card-physical${highlight === 'pulse' ? ' quote-card-highlight-pulse' : highlight === 'solid' ? ' quote-card-highlight-solid' : ''}`}>
             <img src={quoteCardBack} alt="Words of Wisdom" className="quote-card-back-img" />
           </div>
         </div>
 
         {/* Front: the quote */}
         <div className="quote-card-face quote-card-face-front">
-          <div className="quote-card-physical">
+          <div className={`quote-card-physical${highlight === 'pulse' ? ' quote-card-highlight-pulse' : highlight === 'solid' ? ' quote-card-highlight-solid' : ''}`}>
             <div className="quote-card-quote-wrap">
               <img
                 src={quoteImage}
